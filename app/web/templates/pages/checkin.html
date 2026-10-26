@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<header class="page-head">
+  <h1>{{ 'Hoy' if day == today else day | short_date | capitalize }}</h1>
+  {% if saved %}<p class="pos">Guardado ✓</p>{% endif %}
+</header>
+
+<form method="post" action="/dia" class="checkin">
+  <input type="hidden" name="date" value="{{ day.isoformat() }}">
+  <label>¿Cuántas horas dormiste?
+    <input name="sleep_hours" inputmode="decimal" value="{{ checkin.sleep_hours | number if checkin and checkin.sleep_hours is not none else '' }}" placeholder="7,5" autocomplete="off">
+  </label>
+  <fieldset>
+    <legend>¿Cómo estás? <small class="muted">ánimo y energía</small></legend>
+    <div class="mood">
+      {% for n, face in [(1, "😞"), (2, "😕"), (3, "😐"), (4, "🙂"), (5, "😄")] %}
+      <label><input type="radio" name="mood" value="{{ n }}" {% if checkin and checkin.mood == n %}checked{% endif %}><span>{{ face }}</span></label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  <label>¿Cuántos minutos te moviste? <small class="muted">caminar, gym, lo que sea</small>
+    <input name="movement_min" inputmode="numeric" value="{{ checkin.movement_min if checkin and checkin.movement_min is not none else '' }}" placeholder="0" autocomplete="off">
+  </label>
+  <label>Una línea sobre el día
+    <input name="note" value="{{ checkin.note if checkin else '' }}" placeholder="Qué pasó, qué te molestó, qué salió bien" autocomplete="off">
+  </label>
+  <button type="submit">Guardar</button>
+</form>
+
+<details class="add" {% if day.weekday() in (6, 0) and not review %}open{% endif %}>
+  <summary role="button" class="secondary">Revisión de la semana del {{ week.day }}/{{ week.month }}</summary>
+  <form method="post" action="/dia/semana">
+    <input type="hidden" name="date" value="{{ day.isoformat() }}">
+    <label>¿Qué salió bien?<textarea name="went_well" rows="2">{{ review.went_well if review else '' }}</textarea></label>
+    <label>¿Qué cambiarías?<textarea name="change" rows="2">{{ review.change if review else '' }}</textarea></label>
+    <button type="submit">Guardar</button>
+  </form>
+</details>
+
+<section>
+  <h2>Últimos días</h2>
+  <p class="muted">Promedio 7 días: {{ averages.sleep_hours | number }} h de sueño · ánimo {{ averages.mood | number }}/5 · {{ averages.movement_min | number(0) }} min de movimiento</p>
+  <ul class="list compact">
+    {% for c in recent %}
+    <li>
+      <a href="/dia?fecha={{ c.date.isoformat() }}" class="grow">{{ c.date | short_date }}</a>
+      <span>{{ c.sleep_hours | number }} h</span>
+      <span>{{ ["", "😞", "😕", "😐", "🙂", "😄"][c.mood] if c.mood else "—" }}</span>
+      <span>{{ c.movement_min if c.movement_min is not none else "—" }} min</span>
+    </li>
+    {% else %}
+    <li class="muted">Todavía no hay check-ins.</li>
+    {% endfor %}
+  </ul>
+  <form method="get" action="/dia" class="row">
+    <input type="date" name="fecha" value="{{ day.isoformat() }}" max="{{ today.isoformat() }}" class="date">
+    <button type="submit" class="secondary">Ir a otro día</button>
+  </form>
+</section>
+{% endblock %}

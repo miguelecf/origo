@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block content %}
+<header class="page-head"><h1>Listas</h1></header>
+
+<section>
+  <h2>Para comprar en casa</h2>
+  <form method="post" action="/listas/casa" class="row">
+    <input name="text" placeholder="Leche, pan, yerba…" autocomplete="off" required enterkeyhint="done">
+    <button type="submit">Agregar</button>
+  </form>
+
+  <ul class="list checklist" id="home-list">
+    {% for item in items %}
+    <li class="{{ 'done' if item.done else '' }}">
+      <form method="post" action="/listas/casa/{{ item.id }}/marcar" hx-target="#home-list" hx-select="#home-list" hx-swap="outerHTML" class="grow">
+        <label><input type="checkbox" {% if item.done %}checked{% endif %} onchange="this.form.requestSubmit()"> {{ item.name }}</label>
+      </form>
+      <form method="post" action="/listas/casa/{{ item.id }}/borrar" hx-target="#home-list" hx-select="#home-list" hx-swap="outerHTML">
+        <button class="icon" aria-label="Borrar">×</button>
+      </form>
+    </li>
+    {% else %}
+    <li class="muted">La lista está vacía.</li>
+    {% endfor %}
+  </ul>
+
+  {% set pending = items | rejectattr("done") | list %}
+  <div class="actions">
+    {% if pending %}
+    <a role="button" class="whatsapp" href="{{ whatsapp_url }}" target="_blank" rel="noopener" hx-boost="false"
+       data-share-text="{{ whatsapp_text }}" onclick="return shareList(this)">Mandar por WhatsApp</a>
+    {% endif %}
+    {% if items | selectattr("done") | list %}
+    <form method="post" action="/listas/casa/limpiar"><button class="secondary outline">Limpiar tachados</button></form>
+    {% endif %}
+  </div>
+</section>
+
+<section>
+  <h2>Mercado</h2>
+  {% if open_trip %}
+    <a role="button" href="/mercado">Seguir con la compra · {{ open_trip.total | money }}</a>
+  {% else %}
+    <form method="post" action="/mercado/empezar">
+      <button type="submit">Empezar compra{% if pending %} con {{ pending | length }} de la lista{% endif %}</button>
+    </form>
+  {% endif %}
+
+  {% if trips %}
+  <h3>Últimas compras</h3>
+  <ul class="list compact">
+    {% for t in trips %}
+    <li><span class="grow">{{ t.closed_at | short_date }} · {{ t.items | length }} productos</span><strong>{{ t.total | money }}</strong></li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+</section>
+{% endblock %}

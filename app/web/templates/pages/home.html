@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+{% set f = o.finance %}{% set d = o.debts %}{% set w = o.weight %}{% set s = o.last_7_days %}
+<header class="page-head">
+  <h1>Hola</h1>
+  <p class="muted">{{ MONTHS[o.period[0].month - 1] | capitalize }} {{ o.period[0].year }}</p>
+</header>
+
+{% if not o.today.checkin %}
+<a href="/dia" role="button" class="cta">Check-in de hoy · 1 minuto</a>
+{% endif %}
+
+{% for a in d.card_alerts %}
+<p class="alert">💳 {{ a.card }}: la cuota {{ a.installment.number }} ({{ a.installment.amount | money }}) vence {{ a.installment.due_date | short_date }} y {{ a.person }} todavía no te la pagó.</p>
+{% endfor %}
+
+<div class="grid-cards">
+  <a class="card" href="/plata">
+    <small>Balance del mes</small>
+    <strong class="{{ 'neg' if f.balance < 0 else 'pos' }}">{{ f.balance | money }}</strong>
+    <span class="muted">Entró {{ f.income | money }} · Salió {{ f.expense | money }}</span>
+    {% if f.by_category %}<span class="muted">Más gasto: {{ f.by_category[0][0] }} ({{ f.by_category[0][1] | money }})</span>{% endif %}
+  </a>
+
+  <a class="card" href="/deudas">
+    <small>Deudas</small>
+    <span>Me deben <strong class="pos">{{ d.owed_to_me | money }}</strong></span>
+    <span>Debo <strong class="neg">{{ d.i_owe | money }}</strong></span>
+    {% if d.due_soon %}<span class="muted">{{ d.due_soon | length }} cuota(s) vencen en 7 días</span>{% endif %}
+  </a>
+
+  <a class="card" href="/cuerpo">
+    <small>Peso</small>
+    {% if w.current %}
+      <strong>{{ w.current.kg | number }} kg</strong>
+      {% set diff = w.current.kg - w.start.kg %}
+      <span class="muted">Arrancaste en {{ w.start.kg | number }} kg ({{ "+" if diff > 0 else "" }}{{ diff | number }})</span>
+      {% if w.month_ago %}{% set m = w.current.kg - w.month_ago.kg %}<span class="muted">Últimos 30 días: {{ "+" if m > 0 else "" }}{{ m | number }} kg</span>{% endif %}
+      {% if w.goal %}<span class="muted">Meta {{ w.goal | number }} kg · faltan {{ (w.current.kg - w.goal) | abs | number }}</span>{% endif %}
+    {% else %}
+      <span class="muted">Todavía no registraste peso</span>
+    {% endif %}
+    <span class="muted">Comidas hoy: {{ o.today.meals }}</span>
+  </a>
+
+  <a class="card" href="/dia">
+    <small>Últimos 7 días</small>
+    <span>Sueño <strong>{{ s.sleep_hours | number }} h</strong></span>
+    <span>Ánimo <strong>{{ s.mood | number }}</strong>/5</span>
+    <span>Movimiento <strong>{{ s.movement_min | number(0) }}</strong> min/día</span>
+    <span class="muted">{{ s.days }}/7 días registrados</span>
+  </a>
+
+  <a class="card" href="{{ '/mercado' if o.open_trip else '/listas' }}">
+    <small>Listas</small>
+    <span>{{ o.home_pending }} cosa(s) para comprar</span>
+    {% if o.open_trip %}<span class="pos">Compra en curso: {{ o.open_trip.total | money }}</span>{% endif %}
+  </a>
+</div>
+{% endblock %}

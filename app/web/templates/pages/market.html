@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<script type="application/json" id="trip-state">{{ state | tojson }}</script>
+<div x-data="market('trip-state')" class="market">
+  <div class="market-total">
+    <div class="row">
+      <strong class="big" x-text="money(total)"></strong>
+      <input class="budget" x-model="budget" @input="changed()" inputmode="decimal" placeholder="Presupuesto" aria-label="Presupuesto">
+    </div>
+    <template x-if="budgetValue > 0">
+      <div>
+        <progress :value="Math.min(total, budgetValue)" :max="budgetValue" :class="{ over: total > budgetValue }"></progress>
+        <small :class="total > budgetValue ? 'neg' : 'muted'"
+               x-text="total > budgetValue ? 'Te pasaste ' + money(total - budgetValue) : 'Te quedan ' + money(budgetValue - total)"></small>
+      </div>
+    </template>
+    <small class="muted">
+      <span x-text="items.length"></span> productos
+      <template x-if="unpriced > 0"><span> · <span x-text="unpriced"></span> sin precio</span></template>
+      · <span x-text="status"></span>
+    </small>
+  </div>
+
+  {% include "partials/error.html" %}
+
+  <form class="add-item" @submit.prevent="add()">
+    <input x-model="draft.name" @input="suggest()" list="known-products" placeholder="Producto" autocomplete="off" required x-ref="name">
+    <input x-model="draft.price" inputmode="decimal" :placeholder="draft.hint || 'Precio'" class="price" autocomplete="off">
+    <input x-model="draft.qty" inputmode="decimal" placeholder="1" class="qty" aria-label="Cantidad" autocomplete="off">
+    <button type="submit" aria-label="Agregar">+</button>
+  </form>
+  <datalist id="known-products">
+    <template x-for="name in Object.keys(lastPrices)" :key="name"><option :value="name"></option></template>
+  </datalist>
+
+  <ul class="list market-items">
+    <template x-for="(item, index) in items" :key="index">
+      <li :class="{ unpriced: !priceOf(item) }">
+        <div class="grow">
+          <span x-text="item.name"></span>
+          <template x-if="trend(item)"><small :class="trend(item).up ? 'neg' : 'pos'" x-text="trend(item).text"></small></template>
+        </div>
+        <input x-model="item.qty" @input="changed()" inputmode="decimal" class="qty" aria-label="Cantidad">
+        <span class="muted">×</span>
+        <input x-model="item.price" @input="changed()" inputmode="decimal" class="price" :placeholder="hintFor(item) || 'Precio'" aria-label="Precio">
+        <strong class="subtotal" x-text="money(subtotal(item))"></strong>
+        <button class="icon" @click="remove(index)" aria-label="Quitar">×</button>
+      </li>
+    </template>
+  </ul>
+
+  <div class="actions">
+    <button @click="finish()" :disabled="total <= 0">Terminar compra y guardar gasto</button>
+    <form method="post" action="/mercado/{{ trip.id }}/descartar" hx-boost="false" onsubmit="return confirm('¿Descartar esta compra?')">
+      <button class="secondary outline">Descartar</button>
+    </form>
+  </div>
+  <form method="post" action="/mercado/{{ trip.id }}/cerrar" hx-boost="false" x-ref="close"></form>
+</div>
+{% endblock %}

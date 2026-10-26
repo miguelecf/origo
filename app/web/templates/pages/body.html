@@ -1,0 +1,63 @@
+{% extends "base.html" %}
+{% block content %}
+<header class="page-head"><h1>Cuerpo</h1></header>
+
+<form method="post" action="/cuerpo/comida" class="food">
+  <input name="text" placeholder="¿Qué comiste? (Enter y listo)" autocomplete="off" autofocus enterkeyhint="send">
+</form>
+
+<section>
+  {% for day, entries in meals_by_day.items() %}
+  <h3>{{ day | short_date | capitalize }}</h3>
+  <ul class="list compact">
+    {% for e in entries %}
+    <li>
+      <small class="muted">{{ e.at.strftime('%H:%M') }}</small>
+      <span class="grow">{{ e.text }}</span>
+      <form method="post" action="/cuerpo/comida/{{ e.id }}/borrar"><button class="icon" aria-label="Borrar">×</button></form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">Sin comidas en los últimos 7 días.</p>
+  {% endfor %}
+</section>
+
+<section>
+  <h2>Peso</h2>
+  {% set w = summary %}
+  {% if w.current %}
+  <div class="totals">
+    <div><small>Arrancaste</small><strong>{{ w.start.kg | number }} kg</strong><small class="muted">{{ w.start.date.strftime('%d/%m/%Y') }}</small></div>
+    <div><small>Hoy</small><strong>{{ w.current.kg | number }} kg</strong>
+      {% set diff = w.current.kg - w.start.kg %}<small class="{{ 'neg' if diff > 0 else 'pos' }}">{{ "+" if diff > 0 else "" }}{{ diff | number }} kg</small></div>
+    <div><small>Meta</small><strong>{{ (w.goal | number ~ ' kg') if w.goal else '—' }}</strong>
+      {% if w.goal %}<small class="muted">faltan {{ (w.current.kg - w.goal) | abs | number }}</small>{% endif %}</div>
+  </div>
+  <canvas data-chart="weight" data-values='{{ chart | tojson }}' data-goal="{{ w.goal or '' }}" height="180"></canvas>
+  {% endif %}
+
+  <form method="post" action="/cuerpo/peso" class="row">
+    <input name="kg" inputmode="decimal" placeholder="Peso de hoy (kg)" required autocomplete="off">
+    <input type="date" name="date" value="{{ today.isoformat() }}" class="date">
+    <button type="submit">Guardar</button>
+  </form>
+
+  <details>
+    <summary>Meta e historial</summary>
+    <form method="post" action="/cuerpo/meta" class="row">
+      <input name="kg" inputmode="decimal" placeholder="Meta (kg) — vacío para quitarla" value="{{ summary.goal or '' }}" autocomplete="off">
+      <button type="submit" class="secondary">Guardar meta</button>
+    </form>
+    <ul class="list compact">
+      {% for weight in series %}
+      <li>
+        <span class="grow">{{ weight.date.strftime('%d/%m/%Y') }}</span>
+        <strong>{{ weight.kg | number }} kg</strong>
+        <form method="post" action="/cuerpo/peso/{{ weight.id }}/borrar"><button class="icon" aria-label="Borrar">×</button></form>
+      </li>
+      {% endfor %}
+    </ul>
+  </details>
+</section>
+{% endblock %}

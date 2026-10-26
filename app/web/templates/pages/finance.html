@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block content %}
+<header class="page-head row">
+  <a href="/plata?mes={{ prev_month.strftime('%Y-%m') }}" class="nav-arrow" aria-label="Mes anterior">‹</a>
+  <h1>{{ MONTHS[month.month - 1] | capitalize }} {{ month.year }}</h1>
+  <a href="/plata?mes={{ next_month.strftime('%Y-%m') }}" class="nav-arrow" aria-label="Mes siguiente">›</a>
+</header>
+
+{% include "partials/error.html" %}
+
+<form method="post" action="/plata" class="quick" x-data="{ kind: 'expense' }">
+  <fieldset class="segmented">
+    <label><input type="radio" name="kind" value="expense" x-model="kind" checked> Gasto</label>
+    <label><input type="radio" name="kind" value="income" x-model="kind"> Ingreso</label>
+  </fieldset>
+  <div class="row">
+    <input name="amount" inputmode="decimal" placeholder="Monto" required autocomplete="off">
+    <select name="category" x-show="kind === 'expense'" :disabled="kind !== 'expense'">
+      {% for c in expense_categories %}<option>{{ c }}</option>{% endfor %}
+    </select>
+    <select name="category" x-show="kind === 'income'" :disabled="kind !== 'income'" x-cloak>
+      {% for c in income_categories %}<option>{{ c }}</option>{% endfor %}
+    </select>
+  </div>
+  <div class="row">
+    <input name="note" placeholder="Nota (opcional)" autocomplete="off">
+    <input type="date" name="date" value="{{ today.isoformat() }}" class="date">
+  </div>
+  <button type="submit">Guardar</button>
+</form>
+
+<div class="totals">
+  <div><small>Entró</small><strong class="pos">{{ summary.income | money }}</strong></div>
+  <div><small>Salió</small><strong class="neg">{{ summary.expense | money }}</strong></div>
+  <div><small>Balance</small><strong class="{{ 'neg' if summary.balance < 0 else 'pos' }}">{{ summary.balance | money }}</strong></div>
+</div>
+
+{% if summary.by_category %}
+<section>
+  <h2>En qué se fue</h2>
+  <ul class="bars">
+    {% set top = summary.by_category[0][1] %}
+    {% for cat, total in summary.by_category %}
+    <li>
+      <span>{{ cat }}</span>
+      <span class="bar"><span style="width: {{ (total / top * 100) | round(1) }}%"></span></span>
+      <span class="amount">{{ total | money }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section>
+  <h2>Movimientos</h2>
+  {% if not transactions %}<p class="muted">Nada registrado este mes.</p>{% endif %}
+  <ul class="list">
+    {% for t in transactions %}
+    <li>
+      <div>
+        <span>{{ t.category }}{% if t.note %} · <span class="muted">{{ t.note }}</span>{% endif %}</span>
+        <small class="muted">{{ t.date | short_date }}</small>
+      </div>
+      <strong class="{{ 'pos' if t.kind == 'income' else 'neg' }}">{{ '+' if t.kind == 'income' else '-' }}{{ t.amount | money }}</strong>
+      <form method="post" action="/plata/{{ t.id }}/borrar" onsubmit="return confirm('¿Borrar este movimiento?')">
+        <input type="hidden" name="mes" value="{{ month.strftime('%Y-%m') }}">
+        <button class="icon" aria-label="Borrar">×</button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

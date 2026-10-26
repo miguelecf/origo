@@ -1,0 +1,11 @@
+{% extends "base.html" %}
+{% block content %}
+<article class="login">
+  <h1>{{ app_name }}</h1>
+  {% include "partials/error.html" %}
+  <form method="post" action="/login" hx-boost="false">
+    <input type="password" name="password" placeholder="Contraseña" autofocus required autocomplete="current-password">
+    <button type="submit">Entrar</button>
+  </form>
+</article>
+{% endblock %}

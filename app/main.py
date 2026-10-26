@@ -7,8 +7,8 @@ from starlette.middleware.sessions import SessionMiddleware
 from app.core.config import settings
 from app.core.database import init_db
 from app.mcp_server import mcp
-from app.routers import auth, body, checkin, debts, finance, home, lists
-from app.web.auth import require_login
+from app.routers import auth, body, checkin, debts, finance, guests, home, lists
+from app.web.auth import require_owner
 
 
 def create_app() -> FastAPI:
@@ -24,9 +24,11 @@ def create_app() -> FastAPI:
     app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
     app.include_router(auth.router)
-    protected = [Depends(require_login)]
-    for module in (home, finance, debts, body, checkin, lists):
-        app.include_router(module.router, dependencies=protected)
+    # Deudas y Súper chequean permisos por ruta: también entran invitados con link mágico.
+    app.include_router(debts.router)
+    app.include_router(lists.router)
+    for module in (home, finance, body, checkin, guests):
+        app.include_router(module.router, dependencies=[Depends(require_owner)])
 
     if mcp_app:
         app.mount("/", mcp_app)  # va al final: /mcp y las rutas de OAuth (/authorize, /token, ...)

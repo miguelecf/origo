@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block content %}
+<header class="page-head">
+  <h1>Hola, {{ viewer.guest.name }}</h1>
+  <p class="summary">
+    {% set total_owe = namespace(v=0) %}{% for d in owes_me %}{% set total_owe.v = total_owe.v + remaining(d) %}{% endfor %}
+    {% set total_back = namespace(v=0) %}{% for d in i_owe %}{% set total_back.v = total_back.v + remaining(d) %}{% endfor %}
+    {% if total_owe.v > 0 %}Le debés <strong class="num">{{ total_owe.v | money }}</strong> a {{ owner_name }}.{% else %}No le debés nada a {{ owner_name }}.{% endif %}
+    {% if total_back.v > 0 %}{{ owner_name }} te debe <strong class="num">{{ total_back.v | money }}</strong>.{% endif %}
+  </p>
+</header>
+
+<div class="stack">
+  {% include "partials/error.html" %}
+  {% if sent %}<p class="ok" role="status">Listo, le avisaste a {{ owner_name }}. Cuando lo confirme lo vas a ver acá abajo.</p>{% endif %}
+
+  {% set payable = [] %}
+  {% for d in owes_me %}{% for i in d.installments %}{% if not i.paid_on %}{% set _ = payable.append(i) %}{% endif %}{% endfor %}{% endfor %}
+
+  {% if payable %}
+  <form method="post" action="/deudas/avisar" class="stack" x-data="{ picked: [] }">
+    <h2>¿Qué le pagaste?</h2>
+    <p class="soft">Marcá lo que ya pagaste y {{ owner_name }} lo confirma.</p>
+    {% for d in owes_me if remaining(d) > 0 %}
+    <div>
+      <p class="row between"><b>{{ d.description or "Deuda" }}</b><span class="num soft">{{ remaining(d) | money }} pendiente</span></p>
+      <ul class="cuotas">
+        {% for i in d.installments %}
+        {% set late = not i.paid_on and i.due_date and i.due_date < today %}
+        <li class="{{ 'paid' if i.paid_on }} {{ 'late' if late }}">
+          <label>
+            {% if i.paid_on %}
+              <input type="checkbox" checked disabled>
+            {% elif i.id in claimed %}
+              <input type="checkbox" disabled>
+            {% else %}
+              <input type="checkbox" name="installment_ids" value="{{ i.id }}" x-model="picked">
+            {% endif %}
+            <span class="what num">{% if d.installments | length > 1 %}Cuota {{ i.number }}: {% endif %}{{ i.amount | money }}</span>
+            {% if i.id in claimed %}<span class="tag marker-tag">esperando a {{ owner_name }}</span>{% endif %}
+            <span class="when">{% if i.paid_on %}pagada {{ i.paid_on | short_date }}{% elif i.due_date %}{{ 'venció' if late else 'vence' }} {{ i.due_date | short_date }}{% endif %}</span>
+          </label>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+    {% endfor %}
+    <input name="message" placeholder="Un detalle, si querés. Ej. te transferí por Mercado Pago" autocomplete="off" aria-label="Mensaje">
+    <button type="submit" :disabled="picked.length === 0"
+            x-text="picked.length ? 'Avisarle que pagué ' + (picked.length === 1 ? 'esta cuota' : 'estas ' + picked.length + ' cuotas') : 'Marcá lo que pagaste'">Avisarle que pagué</button>
+  </form>
+  {% endif %}
+</div>
+
+{% if i_owe %}
+<section class="block">
+  <h2>Lo que te debe {{ owner_name }}</h2>
+  {% for d in i_owe if remaining(d) > 0 %}
+  <ul class="cuotas">
+    {% for i in d.installments %}
+    <li class="{{ 'paid' if i.paid_on }}"><label><input type="checkbox" {% if i.paid_on %}checked{% endif %} disabled>
+      <span class="what num">{% if d.installments | length > 1 %}Cuota {{ i.number }}: {% endif %}{{ i.amount | money }}</span>
+      <span class="when">{% if i.paid_on %}te pagó {{ i.paid_on | short_date }}{% elif i.due_date %}vence {{ i.due_date | short_date }}{% endif %}</span></label></li>
+    {% endfor %}
+  </ul>
+  {% endfor %}
+</section>
+{% endif %}
+
+{% if claims %}
+<section class="block">
+  <h2>Tus avisos</h2>
+  <ul class="lines">
+    {% for c in claims %}
+    <li>
+      <div class="grow">
+        <span>{{ "Cuota" if c.installments | length == 1 else "Cuotas" }} {{ c.installments | map(attribute="number") | join_y }}, <span class="num">{{ claim_total(c) | money }}</span></span>
+        <small>{% if c.status == "pending" %}Avisaste {{ c.created_at | short_date }}. {{ owner_name }} todavía no lo vio.
+          {% elif c.status == "confirmed" %}{{ owner_name }} confirmó que le llegó.{% if c.reply %} “{{ c.reply }}”{% endif %}
+          {% else %}{{ owner_name }} dice que no le llegó.{% if c.reply %} “{{ c.reply }}”{% endif %}{% endif %}</small>
+      </div>
+      <span class="tag {{ 'marker-tag' if c.status == 'pending' }}">{{ {"pending": "pendiente", "confirmed": "confirmado", "rejected": "revisar"}[c.status] }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+{% endblock %}

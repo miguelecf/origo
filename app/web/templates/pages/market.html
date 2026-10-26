@@ -1,60 +1,71 @@
 {% extends "base.html" %}
+{% block title %}Súper · {{ app_name }}{% endblock %}
 {% block content %}
 <script type="application/json" id="trip-state">{{ state | tojson }}</script>
-<div x-data="market('trip-state')" class="market">
-  <div class="market-total">
-    <div class="row">
-      <strong class="big" x-text="money(total)"></strong>
+<div x-data="market('trip-state')" hx-boost="false">
+  <div class="till">
+    <div class="till-total">
+      <span class="big" x-text="money(total)" aria-live="polite"></span>
       <input class="budget" x-model="budget" @input="changed()" inputmode="decimal" placeholder="Presupuesto" aria-label="Presupuesto">
     </div>
     <template x-if="budgetValue > 0">
-      <div>
+      <div class="stack-sm" style="gap: 0.25rem">
         <progress :value="Math.min(total, budgetValue)" :max="budgetValue" :class="{ over: total > budgetValue }"></progress>
-        <small :class="total > budgetValue ? 'neg' : 'muted'"
-               x-text="total > budgetValue ? 'Te pasaste ' + money(total - budgetValue) : 'Te quedan ' + money(budgetValue - total)"></small>
+        <small :class="total > budgetValue ? 'neg' : ''"
+               x-text="total > budgetValue ? 'Te pasaste por ' + money(total - budgetValue) : 'Te quedan ' + money(budgetValue - total)"></small>
       </div>
     </template>
-    <small class="muted">
-      <span x-text="items.length"></span> productos
-      <template x-if="unpriced > 0"><span> · <span x-text="unpriced"></span> sin precio</span></template>
-      · <span x-text="status"></span>
-    </small>
   </div>
 
   {% include "partials/error.html" %}
 
-  <form class="add-item" @submit.prevent="add()">
-    <input x-model="draft.name" @input="suggest()" list="known-products" placeholder="Producto" autocomplete="off" required x-ref="name">
-    <input x-model="draft.price" inputmode="decimal" :placeholder="draft.hint || 'Precio'" class="price" autocomplete="off">
-    <input x-model="draft.qty" inputmode="decimal" placeholder="1" class="qty" aria-label="Cantidad" autocomplete="off">
-    <button type="submit" aria-label="Agregar">+</button>
+  <form class="entry" @submit.prevent="add()">
+    <input x-model="draft.price" x-ref="price" class="price-in" inputmode="decimal" enterkeyhint="done"
+           placeholder="$ 0" autocomplete="off" aria-label="Precio" autofocus>
+    <input x-model="draft.name" @input="suggest()" list="known-products" placeholder="Qué es (opcional)" autocomplete="off" aria-label="Producto">
+    <input x-model="draft.qty" inputmode="decimal" placeholder="×1" autocomplete="off" aria-label="Cantidad">
+    <button type="submit" aria-label="Sumar">+</button>
+    <small class="hint" x-show="draft.hint" x-text="draft.hint" x-cloak></small>
   </form>
   <datalist id="known-products">
     <template x-for="name in Object.keys(lastPrices)" :key="name"><option :value="name"></option></template>
   </datalist>
 
-  <ul class="list market-items">
-    <template x-for="(item, index) in items" :key="index">
-      <li :class="{ unpriced: !priceOf(item) }">
-        <div class="grow">
-          <span x-text="item.name"></span>
-          <template x-if="trend(item)"><small :class="trend(item).up ? 'neg' : 'pos'" x-text="trend(item).text"></small></template>
-        </div>
-        <input x-model="item.qty" @input="changed()" inputmode="decimal" class="qty" aria-label="Cantidad">
-        <span class="muted">×</span>
-        <input x-model="item.price" @input="changed()" inputmode="decimal" class="price" :placeholder="hintFor(item) || 'Precio'" aria-label="Precio">
-        <strong class="subtotal" x-text="money(subtotal(item))"></strong>
-        <button class="icon" @click="remove(index)" aria-label="Quitar">×</button>
-      </li>
-    </template>
-  </ul>
+  <div class="ticket">
+    <header>
+      <b>COMPRA</b>
+      <small>{{ trip.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
+      {% if viewer.guest %}<small>{{ viewer.guest.name }}</small>{% endif %}
+    </header>
+    <ol>
+      <template x-for="(item, index) in items" :key="item.key">
+        <li :class="{ unpriced: !priceOf(item), fresh: item.fresh }">
+          <span class="name"><span x-text="item.name || 'Sin nombre'" :class="{ 'soft': !item.name }"></span>
+            <em x-show="qtyOf(item) !== 1" x-text="' ×' + fmtQty(item)"></em></span>
+          <span class="sub" x-text="priceOf(item) ? money(subtotal(item)) : 'sin precio'"></span>
+          <button class="x" @click="remove(index)" :aria-label="'Quitar ' + (item.name || 'producto')">×</button>
+          <span class="edit">
+            <input class="q" x-model="item.qty" @input="changed()" inputmode="decimal" aria-label="Cantidad">
+            <span>×</span>
+            <input class="p" x-model="item.price" @input="changed()" inputmode="decimal" :placeholder="hintFor(item) || 'precio'" aria-label="Precio">
+          </span>
+          <template x-if="trend(item)"><span class="trend" :class="trend(item).up ? 'up' : 'down'" x-text="trend(item).text"></span></template>
+        </li>
+      </template>
+    </ol>
+    <p class="blank" x-show="items.length === 0">Escribí el primer precio arriba y apretá Enter.</p>
+    <footer><span>TOTAL</span><span class="num" x-text="money(total)"></span></footer>
+    <small style="display:block; text-align:center; margin-top:0.6rem; color:#6e6c66" x-text="items.length + (items.length === 1 ? ' producto' : ' productos') + (unpriced ? ', ' + unpriced + ' sin precio' : '') + '. ' + status"></small>
+  </div>
 
-  <div class="actions">
-    <button @click="finish()" :disabled="total <= 0">Terminar compra y guardar gasto</button>
-    <form method="post" action="/mercado/{{ trip.id }}/descartar" hx-boost="false" onsubmit="return confirm('¿Descartar esta compra?')">
-      <button class="secondary outline">Descartar</button>
+  <div class="stack block">
+    <button class="block-btn" @click="finish()" :disabled="total <= 0">
+      {{ "Terminar y guardar el gasto" if viewer.is_owner else "Terminar la compra" }}
+    </button>
+    <form method="post" action="/super/compra/{{ trip.id }}/descartar" hx-boost="false" onsubmit="return confirm('¿Tirar esta compra? Se pierde lo anotado.')">
+      <button class="ghost block-btn">Tirar esta compra</button>
     </form>
   </div>
-  <form method="post" action="/mercado/{{ trip.id }}/cerrar" hx-boost="false" x-ref="close"></form>
+  <form method="post" action="/super/compra/{{ trip.id }}/cerrar" hx-boost="false" x-ref="close"></form>
 </div>
 {% endblock %}

@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<header class="page-head">
+  <h1>Invitados</h1>
+  <p class="soft">Cada invitado entra con su propio link, sin contraseña, y ve solo lo que le habilitás.</p>
+</header>
+
+<div class="stack">
+  {% include "partials/error.html" %}
+
+  {% if new_link %}
+  <div class="marker" x-data="{ copied: false }">
+    <p>Link de <strong>{{ new_link.name }}</strong>. Mandáselo ahora: por seguridad no se vuelve a mostrar.</p>
+    <input value="{{ new_link.url }}" readonly aria-label="Link" @focus="$el.select()">
+    <div class="row">
+      <a class="btn whatsapp grow" href="{{ new_link.whatsapp }}" target="_blank" rel="noopener" hx-boost="false">Mandar por WhatsApp</a>
+      <button type="button" class="ghost" @click="navigator.clipboard.writeText('{{ new_link.url }}').then(() => copied = true)" x-text="copied ? 'Copiado' : 'Copiar'">Copiar</button>
+    </div>
+  </div>
+  {% endif %}
+
+  <details class="sheet" {% if not guests %}open{% endif %}>
+    <summary class="row between"><b>Invitar a alguien</b><span class="soft">+</span></summary>
+    <form method="post" action="/invitados" class="stack">
+      <input name="name" required placeholder="Nombre. Ej. Ana" autocomplete="off" aria-label="Nombre">
+      <fieldset class="stack-sm" style="border: 0; padding: 0; margin: 0">
+        <legend class="soft" style="padding: 0 0 0.35rem">Qué puede ver</legend>
+        <label class="row" style="flex-direction: row"><input type="checkbox" name="can_lists" value="true" checked> Súper: lista de casa y compras</label>
+        <label class="row" style="flex-direction: row"><input type="checkbox" name="can_debts" value="true"> Deudas: solo las que tiene con vos</label>
+      </fieldset>
+      <label>Cómo figura en Deudas <small>Si no lo completás, se usa el nombre</small>
+        <input name="person" list="people" autocomplete="off">
+      </label>
+      <datalist id="people">{% for p in people %}<option value="{{ p }}">{% endfor %}</datalist>
+      <button type="submit">Crear link</button>
+    </form>
+  </details>
+</div>
+
+<section class="block">
+  <h2>Con acceso</h2>
+  <ul class="lines">
+    {% for g in guests %}
+    <li>
+      <div class="grow">
+        <span>{{ g.name }}{% if g.revoked_at %} <span class="tag">sin acceso</span>{% endif %}</span>
+        <small>{{ [("Súper" if g.can_lists else ""), ("deudas de " ~ g.person if g.can_debts else "")] | select | join(" y ") }}.
+          {% if g.last_seen_at %}Entró {{ g.last_seen_at | short_date }}.{% else %}Todavía no entró.{% endif %}</small>
+      </div>
+      <form method="post" action="/invitados/{{ g.id }}/link"><button class="text">{{ "Dar acceso" if g.revoked_at else "Link nuevo" }}</button></form>
+      {% if not g.revoked_at %}
+      <form method="post" action="/invitados/{{ g.id }}/quitar" onsubmit="return confirm('¿Quitarle el acceso a {{ g.name }}? Su link deja de funcionar.')"><button class="text danger">Quitar</button></form>
+      {% endif %}
+    </li>
+    {% else %}
+    <li class="empty">Todavía no invitaste a nadie.</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

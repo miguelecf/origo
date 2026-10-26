@@ -28,11 +28,14 @@ class MarketTrip(Base):
     created_at: Mapped[dt.datetime] = mapped_column(default=now)
     closed_at: Mapped[dt.datetime | None]
     budget: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
+    # None = la hice yo. Si la hizo un invitado, no se carga sola como gasto mío.
+    guest_id: Mapped[int | None] = mapped_column(ForeignKey("guests.id"), index=True)
     transaction_id: Mapped[int | None] = mapped_column(ForeignKey("transactions.id", ondelete="SET NULL"))
 
     items: Mapped[list["MarketItem"]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="MarketItem.position"
     )
+    guest: Mapped["Guest | None"] = relationship()  # noqa: F821
 
     @property
     def total(self) -> Decimal:
@@ -44,7 +47,7 @@ class MarketItem(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     trip_id: Mapped[int] = mapped_column(ForeignKey("market_trips.id"), index=True)
-    name: Mapped[str] = mapped_column(String(80))
+    name: Mapped[str] = mapped_column(String(80), default="")  # vacío = solo precio
     price: Mapped[Decimal] = mapped_column(Numeric(14, 2), default=0)
     qty: Mapped[Decimal] = mapped_column(Numeric(8, 3), default=1)
     position: Mapped[int] = mapped_column(default=0)

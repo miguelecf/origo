@@ -7,6 +7,8 @@ class Settings(BaseSettings):
     APP_NAME: str = "Mentor"
     DATABASE_URL: str = "sqlite:///./mentor.db"
     TIMEZONE: str = "America/Argentina/Buenos_Aires"
+    # Cómo te ven los invitados: "Miguel confirmó tu pago".
+    OWNER_NAME: str = "Miguel"
 
     # Login web. Vacío = sin login (solo para uso local).
     APP_PASSWORD: str = ""

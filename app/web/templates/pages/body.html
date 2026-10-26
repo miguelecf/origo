@@ -2,62 +2,66 @@
 {% block content %}
 <header class="page-head"><h1>Cuerpo</h1></header>
 
-<form method="post" action="/cuerpo/comida" class="food">
-  <input name="text" placeholder="¿Qué comiste? (Enter y listo)" autocomplete="off" autofocus enterkeyhint="send">
+<form method="post" action="/cuerpo/comida" class="quick-line">
+  <input name="text" placeholder="¿Qué comiste? Escribí y apretá Enter" autocomplete="off" autofocus enterkeyhint="send" aria-label="Qué comiste">
 </form>
 
-<section>
+<section class="block">
   {% for day, entries in meals_by_day.items() %}
-  <h3>{{ day | short_date | capitalize }}</h3>
-  <ul class="list compact">
-    {% for e in entries %}
-    <li>
-      <small class="muted">{{ e.at.strftime('%H:%M') }}</small>
-      <span class="grow">{{ e.text }}</span>
-      <form method="post" action="/cuerpo/comida/{{ e.id }}/borrar"><button class="icon" aria-label="Borrar">×</button></form>
-    </li>
-    {% endfor %}
-  </ul>
-  {% else %}
-  <p class="muted">Sin comidas en los últimos 7 días.</p>
-  {% endfor %}
-</section>
-
-<section>
-  <h2>Peso</h2>
-  {% set w = summary %}
-  {% if w.current %}
-  <div class="totals">
-    <div><small>Arrancaste</small><strong>{{ w.start.kg | number }} kg</strong><small class="muted">{{ w.start.date.strftime('%d/%m/%Y') }}</small></div>
-    <div><small>Hoy</small><strong>{{ w.current.kg | number }} kg</strong>
-      {% set diff = w.current.kg - w.start.kg %}<small class="{{ 'neg' if diff > 0 else 'pos' }}">{{ "+" if diff > 0 else "" }}{{ diff | number }} kg</small></div>
-    <div><small>Meta</small><strong>{{ (w.goal | number ~ ' kg') if w.goal else '—' }}</strong>
-      {% if w.goal %}<small class="muted">faltan {{ (w.current.kg - w.goal) | abs | number }}</small>{% endif %}</div>
-  </div>
-  <canvas data-chart="weight" data-values='{{ chart | tojson }}' data-goal="{{ w.goal or '' }}" height="180"></canvas>
-  {% endif %}
-
-  <form method="post" action="/cuerpo/peso" class="row">
-    <input name="kg" inputmode="decimal" placeholder="Peso de hoy (kg)" required autocomplete="off">
-    <input type="date" name="date" value="{{ today.isoformat() }}" class="date">
-    <button type="submit">Guardar</button>
-  </form>
-
-  <details>
-    <summary>Meta e historial</summary>
-    <form method="post" action="/cuerpo/meta" class="row">
-      <input name="kg" inputmode="decimal" placeholder="Meta (kg) — vacío para quitarla" value="{{ summary.goal or '' }}" autocomplete="off">
-      <button type="submit" class="secondary">Guardar meta</button>
-    </form>
-    <ul class="list compact">
-      {% for weight in series %}
+  <div class="stack-sm">
+    <h3>{{ day | short_date | capitalize }}</h3>
+    <ul class="lines tight">
+      {% for e in entries %}
       <li>
-        <span class="grow">{{ weight.date.strftime('%d/%m/%Y') }}</span>
-        <strong>{{ weight.kg | number }} kg</strong>
-        <form method="post" action="/cuerpo/peso/{{ weight.id }}/borrar"><button class="icon" aria-label="Borrar">×</button></form>
+        <small class="num">{{ e.at.strftime('%H:%M') }}</small>
+        <span class="grow">{{ e.text }}</span>
+        <form method="post" action="/cuerpo/comida/{{ e.id }}/borrar"><button class="x" aria-label="Borrar comida">×</button></form>
       </li>
       {% endfor %}
     </ul>
+  </div>
+  {% else %}
+  <p class="soft">No anotaste comidas esta semana. Escribí la primera arriba.</p>
+  {% endfor %}
+</section>
+
+<section class="block">
+  <h2>Peso</h2>
+  {% set w = summary %}
+  {% if w.current %}
+  <div class="weights">
+    <div><small>Arrancaste</small><b class="num">{{ w.start.kg | number }}</b><small>{{ w.start.date.strftime('%d/%m/%y') }}</small></div>
+    <div><small>Hoy</small><b class="num">{{ w.current.kg | number }}</b>
+      {% set diff = w.current.kg - w.start.kg %}<small class="{{ 'neg' if diff > 0 else 'pos' }} num">{{ "+" if diff > 0 }}{{ diff | number }} kg</small></div>
+    <div><small>Meta</small><b class="num">{{ w.goal | number if w.goal else "—" }}</b>
+      {% if w.goal %}<small>faltan {{ (w.current.kg - w.goal) | abs | number }} kg</small>{% endif %}</div>
+  </div>
+  <canvas data-chart="weight" data-values='{{ chart | tojson }}' data-goal="{{ w.goal or '' }}" height="190" aria-label="Gráfico de peso"></canvas>
+  {% endif %}
+
+  <form method="post" action="/cuerpo/peso" class="row">
+    <input name="kg" inputmode="decimal" placeholder="Peso de hoy en kg" required autocomplete="off" aria-label="Peso en kg">
+    <input type="date" name="date" value="{{ today.isoformat() }}" class="date" aria-label="Fecha">
+    <button type="submit">Guardar</button>
+  </form>
+
+  <details class="fold">
+    <summary>Meta e historial</summary>
+    <div class="stack">
+      <form method="post" action="/cuerpo/meta" class="row">
+        <input name="kg" inputmode="decimal" placeholder="Meta en kg. Vacío la quita" value="{{ summary.goal | number if summary.goal else '' }}" autocomplete="off" aria-label="Meta en kg">
+        <button type="submit" class="ghost">Guardar meta</button>
+      </form>
+      <ul class="lines tight">
+        {% for weight in series %}
+        <li>
+          <span class="grow">{{ weight.date.strftime('%d/%m/%Y') }}</span>
+          <strong class="num">{{ weight.kg | number }} kg</strong>
+          <form method="post" action="/cuerpo/peso/{{ weight.id }}/borrar"><button class="x" aria-label="Borrar peso">×</button></form>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
   </details>
 </section>
 {% endblock %}

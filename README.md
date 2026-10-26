@@ -3,7 +3,7 @@
 Registro personal en 5 minutos por día: plata, deudas, cuerpo, listas y un check-in diario.
 Todo queda expuesto por MCP para que un agente lo analice y te marque fallas.
 
-FastAPI + SQLite + Jinja2 + HTMX/Alpine + Pico.css. MCP con FastMCP sobre la misma capa `app/services/`.
+FastAPI + SQLite + Jinja2 + HTMX/Alpine, CSS propio. MCP con FastMCP sobre la misma capa `app/services/`.
 
 ## Correr
 
@@ -25,8 +25,18 @@ Tests: `uv run pytest`
 | Plata | Ingresos y gastos por categoría, en una página por mes |
 | Deudas | Me deben / debo, en cuotas. "Presté la tarjeta" crea los dos lados (la persona te debe, vos le debés al banco) y avisa si una cuota vence y no te pagaron. Marcar una cuota la registra en Plata |
 | Cuerpo | Comidas en texto libre (Enter y listo), peso con gráfico, meta |
-| Listas | Lista de casa (se manda por WhatsApp) y mercado: el total se suma solo, recuerda precios y te muestra cuánto subieron. Al terminar se carga como gasto en Súper. Funciona sin señal |
+| Súper | Lista de casa (se manda por WhatsApp) y la compra: escribís precios (con o sin nombre) y el total se suma solo. Recuerda precios y avisa cuánto subieron. Al terminar se carga como gasto en Súper. Funciona sin señal |
 | Día | Sueño, ánimo 1–5, minutos de movimiento, una línea. Revisión semanal |
+
+## Invitados con link mágico
+
+En **Inicio → Invitados con link** creás un link por persona y elegís qué ve:
+
+- **Súper**: comparte la lista de casa y hace sus propias compras. Sus compras no se cargan como gasto tuyo; si la pagaste vos, tocá "La pagué yo".
+- **Deudas**: ve solo las deudas que tiene con vos (no el lado del banco de una tarjeta prestada) y puede avisarte "ya te pagué esta y esta". Vos confirmás (entra la plata en Plata) o rechazás, y le llega la respuesta.
+
+El link se muestra una sola vez. "Link nuevo" invalida el anterior; "Quitar" corta el acceso.
+Los links usan `BASE_URL`, así que poné la dirección con la que entran desde el celular.
 
 ## MCP
 

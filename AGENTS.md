@@ -10,4 +10,7 @@ App personal de registro de vida (un solo usuario). Ver README para correrla.
 - Fechas: usá `app.core.clock.today()/now()` (zona de `TIMEZONE`), no `date.today()`.
 - Rangos de fechas: siempre `[start, end)`.
 - UI en español rioplatense, identificadores en inglés.
+- Permisos: `app/web/auth.py`. Todo es solo del dueño (`require_owner`) salvo Súper y Deudas
+  (`require_scope`), donde también entran invitados con link mágico. Un invitado nunca ve
+  Plata, Cuerpo ni Día, y solo toca su propia compra y sus propias deudas.
 - Tests: `uv run pytest`. Los tests usan una DB temporal (ver `tests/conftest.py`).

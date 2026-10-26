@@ -2,59 +2,65 @@
 {% block content %}
 {% set f = o.finance %}{% set d = o.debts %}{% set w = o.weight %}{% set s = o.last_7_days %}
 <header class="page-head">
-  <h1>Hola</h1>
-  <p class="muted">{{ MONTHS[o.period[0].month - 1] | capitalize }} {{ o.period[0].year }}</p>
+  <h1>{{ MONTHS[o.period[0].month - 1] | capitalize }}</h1>
+  <p class="summary">
+    Entraron <strong class="num">{{ f.income | money }}</strong> y salieron <strong class="num">{{ f.expense | money }}</strong>.
+    {% if f.balance >= 0 %}Vas <strong class="pos num">{{ f.balance | money }}</strong> arriba.{% else %}Vas <strong class="neg num">{{ (-f.balance) | money }}</strong> abajo.{% endif %}
+  </p>
 </header>
 
-{% if not o.today.checkin %}
-<a href="/dia" role="button" class="cta">Check-in de hoy · 1 minuto</a>
-{% endif %}
+<div class="stack">
+  {% if not o.today.checkin %}
+  <a href="/dia" class="cta"><span>Hacer el check-in de hoy</span><span>1 minuto</span></a>
+  {% endif %}
 
-{% for a in d.card_alerts %}
-<p class="alert">💳 {{ a.card }}: la cuota {{ a.installment.number }} ({{ a.installment.amount | money }}) vence {{ a.installment.due_date | short_date }} y {{ a.person }} todavía no te la pagó.</p>
-{% endfor %}
+  {% for c in d.pending_claims %}{% set back = "/" %}{% include "partials/claim.html" %}{% endfor %}
 
-<div class="grid-cards">
-  <a class="card" href="/plata">
-    <small>Balance del mes</small>
-    <strong class="{{ 'neg' if f.balance < 0 else 'pos' }}">{{ f.balance | money }}</strong>
-    <span class="muted">Entró {{ f.income | money }} · Salió {{ f.expense | money }}</span>
-    {% if f.by_category %}<span class="muted">Más gasto: {{ f.by_category[0][0] }} ({{ f.by_category[0][1] | money }})</span>{% endif %}
+  {% for a in d.card_alerts %}
+  <p class="marker">{{ a.card }}: la cuota {{ a.installment.number }} de <span class="num">{{ a.installment.amount | money }}</span> vence {{ a.installment.due_date | short_date }} y {{ a.person }} todavía no te la pagó.</p>
+  {% endfor %}
+</div>
+
+<div class="ledger block">
+  <a href="/plata">
+    <span class="label"><b>Lo que más se llevó</b><small>{{ f.by_category[0][0] if f.by_category else "Todavía nada este mes" }}</small></span>
+    <span class="value num">{{ f.by_category[0][1] | money if f.by_category else "—" }}</span>
   </a>
-
-  <a class="card" href="/deudas">
-    <small>Deudas</small>
-    <span>Me deben <strong class="pos">{{ d.owed_to_me | money }}</strong></span>
-    <span>Debo <strong class="neg">{{ d.i_owe | money }}</strong></span>
-    {% if d.due_soon %}<span class="muted">{{ d.due_soon | length }} cuota(s) vencen en 7 días</span>{% endif %}
+  <a href="/deudas">
+    <span class="label"><b>Te deben</b><small>{% if d.due_soon %}{{ d.due_soon | length }} cuota{{ "s" if d.due_soon | length > 1 }} vence{{ "n" if d.due_soon | length > 1 }} esta semana{% else %}Nada vence esta semana{% endif %}</small></span>
+    <span class="value num pos">{{ d.owed_to_me | money }}</span>
   </a>
-
-  <a class="card" href="/cuerpo">
-    <small>Peso</small>
-    {% if w.current %}
-      <strong>{{ w.current.kg | number }} kg</strong>
-      {% set diff = w.current.kg - w.start.kg %}
-      <span class="muted">Arrancaste en {{ w.start.kg | number }} kg ({{ "+" if diff > 0 else "" }}{{ diff | number }})</span>
-      {% if w.month_ago %}{% set m = w.current.kg - w.month_ago.kg %}<span class="muted">Últimos 30 días: {{ "+" if m > 0 else "" }}{{ m | number }} kg</span>{% endif %}
-      {% if w.goal %}<span class="muted">Meta {{ w.goal | number }} kg · faltan {{ (w.current.kg - w.goal) | abs | number }}</span>{% endif %}
-    {% else %}
-      <span class="muted">Todavía no registraste peso</span>
-    {% endif %}
-    <span class="muted">Comidas hoy: {{ o.today.meals }}</span>
+  <a href="/deudas">
+    <span class="label"><b>Debés</b><small>Incluye tarjetas prestadas</small></span>
+    <span class="value num neg">{{ d.i_owe | money }}</span>
   </a>
-
-  <a class="card" href="/dia">
-    <small>Últimos 7 días</small>
-    <span>Sueño <strong>{{ s.sleep_hours | number }} h</strong></span>
-    <span>Ánimo <strong>{{ s.mood | number }}</strong>/5</span>
-    <span>Movimiento <strong>{{ s.movement_min | number(0) }}</strong> min/día</span>
-    <span class="muted">{{ s.days }}/7 días registrados</span>
+  <a href="/cuerpo">
+    <span class="label"><b>Peso</b>
+      <small>{% if w.current %}Arrancaste en {{ w.start.kg | number }} kg{% if w.goal %}, meta {{ w.goal | number }} kg{% endif %}{% else %}Todavía no lo registraste{% endif %}</small></span>
+    <span class="value num">{% if w.current %}{{ w.current.kg | number }} kg
+      {% set diff = w.current.kg - w.start.kg %}<small class="{{ 'neg' if diff > 0 else 'pos' }}">{{ "+" if diff > 0 }}{{ diff | number }} kg</small>{% else %}—{% endif %}</span>
   </a>
-
-  <a class="card" href="{{ '/mercado' if o.open_trip else '/listas' }}">
-    <small>Listas</small>
-    <span>{{ o.home_pending }} cosa(s) para comprar</span>
-    {% if o.open_trip %}<span class="pos">Compra en curso: {{ o.open_trip.total | money }}</span>{% endif %}
+  <a href="/cuerpo">
+    <span class="label"><b>Comidas de hoy</b><small>Anotalas en Cuerpo</small></span>
+    <span class="value num">{{ o.today.meals }}</span>
+  </a>
+  <a href="/dia">
+    <span class="label"><b>Dormiste</b><small>Promedio de los últimos 7 días ({{ s.days }} registrados)</small></span>
+    <span class="value num">{{ s.sleep_hours | number }} h</span>
+  </a>
+  <a href="/dia">
+    <span class="label"><b>Ánimo</b><small>Promedio de 1 a 5</small></span>
+    <span class="value num">{{ s.mood | number }}</span>
+  </a>
+  <a href="/dia">
+    <span class="label"><b>Movimiento</b><small>Minutos por día</small></span>
+    <span class="value num">{{ s.movement_min | number(0) }}</span>
+  </a>
+  <a href="{{ '/super/compra' if o.open_trip else '/super' }}">
+    <span class="label"><b>{{ "Compra en curso" if o.open_trip else "Lista de casa" }}</b><small>{{ o.home_pending }} cosa{{ "s" if o.home_pending != 1 }} para comprar</small></span>
+    <span class="value num">{{ o.open_trip.total | money if o.open_trip else "" }}</span>
   </a>
 </div>
+
+<p class="block"><a href="/invitados">Invitados con link</a></p>
 {% endblock %}

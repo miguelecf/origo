@@ -1,58 +1,66 @@
 {% extends "base.html" %}
 {% block content %}
-<header class="page-head"><h1>Listas</h1></header>
+<header class="page-head"><h1>Súper</h1></header>
 
-<section>
-  <h2>Para comprar en casa</h2>
-  <form method="post" action="/listas/casa" class="row">
-    <input name="text" placeholder="Leche, pan, yerba…" autocomplete="off" required enterkeyhint="done">
+{% if open_trip %}
+<a href="/super/compra" class="cta"><span>Seguir con la compra</span><span class="num">{{ open_trip.total | money }}</span></a>
+{% else %}
+<a href="/super/compra" class="cta"><span>Ir al súper</span><span>Anotá precios y yo sumo</span></a>
+{% endif %}
+
+<section class="block">
+  <h2>Lista de casa</h2>
+  <form method="post" action="/super/casa" class="row">
+    <input name="text" placeholder="Leche, pan, yerba…" autocomplete="off" required enterkeyhint="done" aria-label="Qué falta">
     <button type="submit">Agregar</button>
   </form>
 
-  <ul class="list checklist" id="home-list">
+  <ul class="lines checklist" id="home-list">
     {% for item in items %}
-    <li class="{{ 'done' if item.done else '' }}">
-      <form method="post" action="/listas/casa/{{ item.id }}/marcar" hx-target="#home-list" hx-select="#home-list" hx-swap="outerHTML" class="grow">
-        <label><input type="checkbox" {% if item.done %}checked{% endif %} onchange="this.form.requestSubmit()"> {{ item.name }}</label>
+    <li class="{{ 'done' if item.done }}">
+      <form method="post" action="/super/casa/{{ item.id }}/marcar" hx-target="#home-list" hx-select="#home-list" hx-swap="outerHTML" class="grow">
+        <label><input type="checkbox" {% if item.done %}checked{% endif %} onchange="this.form.requestSubmit()"><span class="item">{{ item.name }}</span></label>
       </form>
-      <form method="post" action="/listas/casa/{{ item.id }}/borrar" hx-target="#home-list" hx-select="#home-list" hx-swap="outerHTML">
-        <button class="icon" aria-label="Borrar">×</button>
+      <form method="post" action="/super/casa/{{ item.id }}/borrar" hx-target="#home-list" hx-select="#home-list" hx-swap="outerHTML">
+        <button class="x" aria-label="Quitar {{ item.name }}">×</button>
       </form>
     </li>
     {% else %}
-    <li class="muted">La lista está vacía.</li>
+    <li class="empty">No falta nada. Cuando algo se termine, anotalo arriba.</li>
     {% endfor %}
   </ul>
 
   {% set pending = items | rejectattr("done") | list %}
-  <div class="actions">
+  {% if pending or items | selectattr("done") | list %}
+  <div class="row wrap">
     {% if pending %}
-    <a role="button" class="whatsapp" href="{{ whatsapp_url }}" target="_blank" rel="noopener" hx-boost="false"
-       data-share-text="{{ whatsapp_text }}" onclick="return shareList(this)">Mandar por WhatsApp</a>
+    <a class="btn whatsapp grow" href="{{ whatsapp_url }}" target="_blank" rel="noopener" hx-boost="false"
+       data-share-text="{{ whatsapp_text }}" onclick="return shareList(this)">Mandar la lista por WhatsApp</a>
     {% endif %}
     {% if items | selectattr("done") | list %}
-    <form method="post" action="/listas/casa/limpiar"><button class="secondary outline">Limpiar tachados</button></form>
+    <form method="post" action="/super/casa/limpiar"><button class="ghost">Borrar tachados</button></form>
     {% endif %}
   </div>
+  {% endif %}
 </section>
 
-<section>
-  <h2>Mercado</h2>
-  {% if open_trip %}
-    <a role="button" href="/mercado">Seguir con la compra · {{ open_trip.total | money }}</a>
-  {% else %}
-    <form method="post" action="/mercado/empezar">
-      <button type="submit">Empezar compra{% if pending %} con {{ pending | length }} de la lista{% endif %}</button>
-    </form>
-  {% endif %}
-
-  {% if trips %}
-  <h3>Últimas compras</h3>
-  <ul class="list compact">
+{% if trips %}
+<section class="block">
+  <h2>Últimas compras</h2>
+  <ul class="lines">
     {% for t in trips %}
-    <li><span class="grow">{{ t.closed_at | short_date }} · {{ t.items | length }} productos</span><strong>{{ t.total | money }}</strong></li>
+    <li>
+      <div class="grow">
+        <span>{{ t.closed_at | short_date | capitalize }}{% if t.guest and viewer.is_owner %}, la hizo {{ t.guest.name }}{% endif %}</span>
+        <small>{{ t.items | length }} producto{{ "s" if t.items | length != 1 }}{% if t.budget %}, presupuesto {{ t.budget | money }}{% endif %}</small>
+      </div>
+      <strong class="num">{{ t.total | money }}</strong>
+      {% if viewer.is_owner and t.guest and not t.transaction_id %}
+      <form method="post" action="/super/compra/{{ t.id }}/cargar"><button class="text">La pagué yo</button></form>
+      {% endif %}
+    </li>
     {% endfor %}
   </ul>
-  {% endif %}
 </section>
+{% endif %}
 {% endblock %}

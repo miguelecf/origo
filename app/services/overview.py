@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.clock import month_bounds, today
 from app.models import FoodEntry, HomeItem
-from app.services import body, checkins, debts, finance, lists
+from app.services import body, checkins, debts, finance, guests, lists
 
 
 def overview(db: Session, start: dt.date | None = None, end: dt.date | None = None) -> dict:
@@ -21,6 +21,7 @@ def overview(db: Session, start: dt.date | None = None, end: dt.date | None = No
             **debts.balances(db),
             "due_soon": debts.due_until(db, week_ahead),
             "card_alerts": debts.card_alerts(db, week_ahead),
+            "pending_claims": guests.pending_claims(db),
         },
         "weight": body.weight_summary(db),
         "last_7_days": checkins.averages(db, day - dt.timedelta(days=6), day + dt.timedelta(days=1)),

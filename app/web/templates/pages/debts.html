@@ -1,33 +1,37 @@
 {% extends "base.html" %}
 {% macro debt_card(debt) %}
 {% set left = remaining(debt) %}
+{% set n = debt.installments | length %}
 {% set paid = debt.installments | selectattr("paid_on") | list | length %}
-<details class="debt" {% if left > 0 and debt.installments | length > 1 %}open{% endif %}>
+<details class="debt" {% if left > 0 and n > 1 %}open{% endif %}>
   <summary>
-    <span><strong>{{ debt.person }}</strong>{% if debt.group_id %} <span class="tag">💳 tarjeta</span>{% endif %}
-      {% if debt.description %}<small class="muted"> · {{ debt.description }}</small>{% endif %}</span>
-    <span class="amount">{{ left | money }}{% if debt.installments | length > 1 %} <small class="muted">({{ paid }}/{{ debt.installments | length }})</small>{% endif %}</span>
+    <span class="row wrap"><b>{{ debt.person }}</b>
+      {% if debt.group_id %}<span class="tag">tarjeta prestada</span>{% endif %}
+      {% if debt.description %}<small>{{ debt.description }}</small>{% endif %}</span>
+    <span class="num">{{ left | money }}{% if n > 1 %} <small>{{ paid }}/{{ n }}</small>{% endif %}</span>
   </summary>
-  <ul class="installments" id="debt-{{ debt.id }}">
+  <ul class="cuotas" id="debt-{{ debt.id }}">
     {% for i in debt.installments %}
-    <li class="{{ 'late' if not i.paid_on and i.due_date and i.due_date < today else '' }}">
+    {% set late = not i.paid_on and i.due_date and i.due_date < today %}
+    <li class="{{ 'paid' if i.paid_on }} {{ 'late' if late }}">
       <form method="post" action="/deudas/cuotas/{{ i.id }}" hx-target="#debt-{{ debt.id }}" hx-select="#debt-{{ debt.id }}" hx-swap="outerHTML">
         <input type="hidden" name="paid" value="{{ 'false' if i.paid_on else 'true' }}">
         <label>
           <input type="checkbox" {% if i.paid_on %}checked{% endif %} onchange="this.form.requestSubmit()">
-          <span class="grow">{% if debt.installments | length > 1 %}Cuota {{ i.number }} · {% endif %}{{ i.amount | money }}</span>
-          <small class="muted">
+          <span class="what num">{% if n > 1 %}Cuota {{ i.number }}: {% endif %}{{ i.amount | money }}</span>
+          {% if i.id in claimed %}<span class="tag marker-tag">avisó que pagó</span>{% endif %}
+          <span class="when">
             {% if i.paid_on %}{{ 'cobrada' if debt.direction == 'owed_to_me' else 'pagada' }} {{ i.paid_on | short_date }}
-            {% elif i.due_date %}vence {{ i.due_date | short_date }}{% endif %}
-          </small>
+            {% elif i.due_date %}{{ 'venció' if late else 'vence' }} {{ i.due_date | short_date }}{% endif %}
+          </span>
         </label>
       </form>
     </li>
     {% endfor %}
   </ul>
-  <form method="post" action="/deudas/{{ debt.id }}/borrar" class="right"
-        onsubmit="return confirm('{{ '¿Borrar esta tarjeta prestada (los dos lados)?' if debt.group_id else '¿Borrar esta deuda?' }}')">
-    <button class="link">Borrar</button>
+  <form method="post" action="/deudas/{{ debt.id }}/borrar" class="row" style="justify-content: flex-end"
+        onsubmit="return confirm('{{ '¿Borrar esta tarjeta prestada? Se borran los dos lados.' if debt.group_id else '¿Borrar esta deuda?' }}')">
+    <button class="text danger">Borrar</button>
   </form>
 </details>
 {% endmacro %}
@@ -35,47 +39,54 @@
 {% block content %}
 <header class="page-head"><h1>Deudas</h1></header>
 
-{% include "partials/error.html" %}
-{% for a in alerts %}
-<p class="alert">💳 La cuota {{ a.installment.number }} de {{ a.card }} ({{ a.installment.amount | money }}) ya venció y {{ a.person }} no te la pagó.</p>
-{% endfor %}
+<div class="stack">
+  {% include "partials/error.html" %}
+  {% for c in claims %}{% set back = "/deudas" %}{% include "partials/claim.html" %}{% endfor %}
+  {% for a in alerts %}
+  <p class="marker">{{ a.card }}: la cuota {{ a.installment.number }} de <span class="num">{{ a.installment.amount | money }}</span> ya venció y {{ a.person }} no te la pagó.</p>
+  {% endfor %}
 
-<div class="totals two">
-  <div><small>Me deben</small><strong class="pos">{{ balances.owed_to_me | money }}</strong></div>
-  <div><small>Debo</small><strong class="neg">{{ balances.i_owe | money }}</strong></div>
+  <div class="totals two">
+    <div><small>Te deben</small><strong class="pos num">{{ balances.owed_to_me | money }}</strong></div>
+    <div><small>Debés</small><strong class="neg num">{{ balances.i_owe | money }}</strong></div>
+  </div>
+
+  <details class="sheet">
+    <summary class="row between"><b>Anotar una deuda</b><span class="soft">+</span></summary>
+    <form method="post" action="/deudas" class="stack" x-data="{ kind: 'owed_to_me' }">
+      <div class="choice" role="radiogroup" aria-label="Tipo de deuda">
+        <label><input type="radio" name="kind" value="owed_to_me" x-model="kind" checked> Me deben</label>
+        <label><input type="radio" name="kind" value="i_owe" x-model="kind"> Debo</label>
+        <label><input type="radio" name="kind" value="card" x-model="kind"> Presté la tarjeta</label>
+      </div>
+      <input name="person" required autocomplete="off" list="people" :placeholder="kind === 'i_owe' ? '¿A quién le debés?' : '¿Quién te debe?'" aria-label="Persona">
+      <datalist id="people">{% for p in people %}<option value="{{ p }}">{% endfor %}</datalist>
+      <input name="card" x-show="kind === 'card'" x-cloak :required="kind === 'card'" placeholder="¿Qué tarjeta? Ej. Visa Galicia" autocomplete="off" aria-label="Tarjeta">
+      <div class="row">
+        <input name="total" inputmode="decimal" required placeholder="Monto total" autocomplete="off" aria-label="Monto total">
+        <input name="installments" inputmode="numeric" value="1" class="short" aria-label="Cantidad de cuotas">
+        <span class="soft">cuotas</span>
+      </div>
+      <label>Primer vencimiento <small x-text="kind === 'card' ? 'El del resumen de la tarjeta' : 'Opcional'"></small>
+        <input type="date" name="first_due" :required="kind === 'card'">
+      </label>
+      <input name="description" placeholder="¿Por qué? Ej. la heladera" autocomplete="off" aria-label="Descripción">
+      <button type="submit">Guardar deuda</button>
+    </form>
+  </details>
 </div>
 
-<details class="add">
-  <summary role="button" class="secondary">+ Nueva deuda</summary>
-  <form method="post" action="/deudas" x-data="{ kind: 'owed_to_me' }">
-    <fieldset class="segmented">
-      <label><input type="radio" name="kind" value="owed_to_me" x-model="kind" checked> Me deben</label>
-      <label><input type="radio" name="kind" value="i_owe" x-model="kind"> Debo</label>
-      <label><input type="radio" name="kind" value="card" x-model="kind"> Presté la tarjeta</label>
-    </fieldset>
-    <input name="person" required autocomplete="off" :placeholder="kind === 'i_owe' ? '¿A quién?' : '¿Quién?'">
-    <input name="card" x-show="kind === 'card'" x-cloak :required="kind === 'card'" placeholder="Tarjeta (ej. Visa Galicia)" autocomplete="off">
-    <div class="row">
-      <input name="total" inputmode="decimal" required placeholder="Monto total" autocomplete="off">
-      <input name="installments" inputmode="numeric" value="1" aria-label="Cuotas" class="short">
-      <span class="muted">cuotas</span>
-    </div>
-    <label>Primer vencimiento <small class="muted" x-text="kind === 'card' ? '(el de la tarjeta)' : '(opcional)'"></small>
-      <input type="date" name="first_due" :required="kind === 'card'">
-    </label>
-    <input name="description" placeholder="¿Por qué? (opcional)" autocomplete="off">
-    <button type="submit">Guardar</button>
-  </form>
-</details>
-
-<section>
-  <h2>Me deben</h2>
-  {% for d in owed_to_me %}{{ debt_card(d) }}{% else %}<p class="muted">Nadie te debe nada.</p>{% endfor %}
+<section class="block">
+  <h2>Te deben</h2>
+  <div>{% for d in owed_to_me %}{{ debt_card(d) }}{% else %}<p class="soft">Nadie te debe nada.</p>{% endfor %}</div>
 </section>
-<section>
-  <h2>Debo</h2>
-  {% for d in i_owe %}{{ debt_card(d) }}{% else %}<p class="muted">No debés nada.</p>{% endfor %}
+<section class="block">
+  <h2>Debés</h2>
+  <div>{% for d in i_owe %}{{ debt_card(d) }}{% else %}<p class="soft">No le debés a nadie.</p>{% endfor %}</div>
 </section>
 
-<p class="center"><a href="/deudas{{ '' if show_all else '?todas=1' }}">{{ 'Ocultar saldadas' if show_all else 'Ver también las saldadas' }}</a></p>
+<div class="block row wrap between">
+  <a href="/deudas{{ '' if show_all else '?todas=1' }}">{{ 'Ocultar las saldadas' if show_all else 'Ver también las saldadas' }}</a>
+  <a href="/invitados">Compartir con un link</a>
+</div>
 {% endblock %}

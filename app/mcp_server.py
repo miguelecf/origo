@@ -15,7 +15,7 @@ from fastmcp.server.middleware import AuthMiddleware
 from app.core.clock import month_bounds, today
 from app.core.config import settings
 from app.core.database import SessionLocal, init_db
-from app.services import body, checkins, debts, finance, lists, overview
+from app.services import body, checkins, debts, finance, guests, lists, overview
 
 INSTRUCTIONS = """\
 Registro personal de la vida de una persona: plata, deudas, peso, comidas, sueño, ánimo,
@@ -115,6 +115,11 @@ def get_overview(from_date: str | None = None, to_date: str | None = None) -> di
                     {"person": a["person"], "card": a["card"], **_installment(a["installment"])}
                     for a in d["card_alerts"]
                 ],
+                "payment_claims_waiting_my_confirmation": [
+                    {"guest": c.guest.name, "message": c.message, "amount": _num(guests.claim_total(c)),
+                     "installments": [_installment(i) for i in c.installments]}
+                    for c in d["pending_claims"]
+                ],
             },
             "weight": {
                 "start": _weight(w["start"]), "current": _weight(w["current"]),
@@ -189,7 +194,8 @@ def get_market_trips(limit: int = 10) -> list[dict]:
     with _db() as db:
         return [
             {"date": t.closed_at.date().isoformat(), "total": _num(t.total), "budget": _num(t.budget),
-             "items": [{"name": i.name, "price": _num(i.price), "qty": _num(i.qty)} for i in t.items]}
+             "done_by": t.guest.name if t.guest else "me", "counted_as_my_expense": t.transaction_id is not None,
+             "items": [{"name": i.name or None, "price": _num(i.price), "qty": _num(i.qty)} for i in t.items]}
             for t in lists.recent_trips(db, limit)
         ]
 

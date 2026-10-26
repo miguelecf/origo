@@ -92,3 +92,48 @@ def test_weight_summary_and_overview(db):
     assert (s["start"].kg, s["current"].kg, s["month_ago"].kg, s["goal"]) == (90, Decimal("84.8"), Decimal("87.5"), 80)
     body.log_food(db, "2 empanadas y una coca")
     assert overview.overview(db)["today"]["meals"] == 1
+
+
+def test_guest_claim_flow(db):
+    from app.services import guests
+
+    owed, _ = debts.create_card_loan(db, person="Ana", card="Visa", total=Decimal(60000), installments=3, first_due=today())
+    other = debts.create_debt(db, person="Pedro", direction="owed_to_me", total=Decimal(1000))
+    guest, token = guests.create_guest(db, name="Ana", can_debts=True)
+    assert guests.by_token(db, token).id == guest.id
+    assert [d.person for d in guests.guest_debts(db, guest)] == ["Ana"]  # ni la Visa ni Pedro
+
+    # No puede avisar por cuotas ajenas; las suyas sí.
+    claim = guests.create_claim(db, guest, [owed.installments[0].id, owed.installments[1].id, other.installments[0].id], "transferí")
+    assert [i.number for i in claim.installments] == [1, 2]
+    assert guests.claim_total(claim) == 40000
+    # Una cuota con aviso pendiente no se puede volver a avisar.
+    try:
+        guests.create_claim(db, guest, [owed.installments[0].id])
+        raise AssertionError("debería fallar")
+    except ValueError:
+        pass
+
+    guests.resolve_claim(db, claim.id, accept=True, reply="llegó")
+    assert debts.remaining(owed) == 20000
+    assert finance.summary(db, *month_bounds(today()))["income"] == 40000
+    assert guests.pending_claims(db) == []
+
+    guests.rotate_token(db, guest.id)
+    assert guests.by_token(db, token) is None
+
+
+def test_guest_trips_are_separate_and_not_my_expense(db):
+    from app.services import guests
+
+    guest, _ = guests.create_guest(db, name="Ana", can_lists=True)
+    mine = lists.start_trip(db)
+    hers = lists.start_trip(db, guest.id)
+    assert mine.id != hers.id and lists.open_trip(db, guest.id).id == hers.id
+    # Modo solo precios: sin nombre.
+    lists.save_trip(db, hers.id, [{"name": "", "price": "1.250"}, {"name": "", "price": "800", "qty": "2"}])
+    assert hers.total == Decimal(2850)
+    lists.close_trip(db, hers.id)
+    assert finance.summary(db, *month_bounds(today()))["expense"] == 0
+    lists.charge_to_me(db, hers.id)
+    assert finance.summary(db, *month_bounds(today()))["expense"] == 2850

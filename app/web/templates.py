@@ -40,9 +40,16 @@ def short_date(value: dt.date | dt.datetime) -> str:
     return f"{WEEKDAYS[day.weekday()]} {day.day}/{day.month}"
 
 
-templates.env.filters.update(money=money, number=number, short_date=short_date)
-templates.env.globals.update(app_name=settings.APP_NAME, MONTHS=MONTHS)
+def join_y(values) -> str:
+    """[2, 3, 4] -> '2, 3 y 4'."""
+    values = [str(v) for v in values]
+    return " y ".join([", ".join(values[:-1]), values[-1]]) if len(values) > 1 else "".join(values)
+
+
+templates.env.filters.update(money=money, number=number, short_date=short_date, join_y=join_y)
+templates.env.globals.update(app_name=settings.APP_NAME, owner_name=settings.OWNER_NAME, MONTHS=MONTHS)
 
 
 def render(request: Request, name: str, **context):
-    return templates.TemplateResponse(request, name, {"active": request.url.path, **context})
+    viewer = getattr(request.state, "viewer", None)
+    return templates.TemplateResponse(request, name, {"active": request.url.path, "viewer": viewer, **context})

@@ -1,0 +1,18 @@
+{# Aviso de pago de un invitado, con confirmar/rechazar. Requiere `c` y `back`. #}
+<div class="marker">
+  {% set of = c.installments[0].debt.installments | length %}
+  <p><strong>{{ c.guest.name }}</strong> dice que te pagó
+    {% if c.installments | length == 1 %}la cuota {{ c.installments[0].number }}{% else %}las cuotas {{ c.installments | map(attribute="number") | join_y }}{% endif %}{% if of > 1 %} de {{ of }}{% endif %}:
+    <strong class="num">{{ claim_total(c) | money }}</strong>.</p>
+  {% if c.message %}<p>“{{ c.message }}”</p>{% endif %}
+  <form method="post" action="/deudas/avisos/{{ c.id }}" class="stack-sm" x-data="{ no: false }">
+    <input type="hidden" name="back" value="{{ back }}">
+    <input name="reply" placeholder="Respuesta (opcional)" autocomplete="off" x-show="no" x-cloak>
+    <div class="row">
+      <button name="accept" value="true" class="grow" x-show="!no">Sí, me llegó</button>
+      <button type="button" class="ghost grow" x-show="!no" @click="no = true">No me llegó</button>
+      <button name="accept" value="false" class="grow" x-show="no" x-cloak>Avisarle que no</button>
+      <button type="button" class="ghost" x-show="no" x-cloak @click="no = false">Volver</button>
+    </div>
+  </form>
+</div>

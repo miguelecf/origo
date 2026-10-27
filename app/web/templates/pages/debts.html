@@ -14,7 +14,7 @@
   </summary>
   <div class="debt-body stack-sm">
     {% if debt.description %}<p class="soft">{{ debt.description }}</p>{% endif %}
-    {% if debt.group_id %}<p><span class="tag">Tarjeta prestada</span></p>{% endif %}
+    {% if debt.group_id %}<p><span class="tag">💳 Tarjeta prestada</span></p>{% endif %}
     <ul class="cuotas" id="debt-{{ debt.id }}">
       {% for i in debt.installments %}
       {% set late = not i.paid_on and i.due_date and i.due_date < today %}
@@ -24,7 +24,7 @@
           <label>
             <input type="checkbox" {% if i.paid_on %}checked{% endif %} onchange="this.form.requestSubmit()">
             <span class="what num">Cuota {{ i.number }}: {{ i.amount | money }}</span>
-            {% if i.id in claimed %}<span class="tag marker-tag">Avisó que pagó</span>{% endif %}
+            {% if i.id in claimed %}<span class="tag marker-tag">🔔 Avisó que pagó</span>{% endif %}
             <span class="when">{% if i.paid_on %}{{ 'Cobrada' if debt.direction == 'owed_to_me' else 'Pagada' }} {{ i.paid_on | short_date }}{% elif i.due_date %}{{ 'Venció' if late else 'Vence' }} {{ i.due_date | short_date }}{% endif %}</span>
           </label>
         </form>
@@ -44,41 +44,41 @@
     <img src="/static/brands/{{ slug }}.png" alt="" width="40" height="40"><span>{{ name }}</span>
   </label>
   {% endfor %}
-  {% if selected == 'entityBrand' %}<label><input type="radio" name="entityBrand" value="" x-model="entityBrand" :disabled="{{ disabled }}"><span class="avatar initials" aria-hidden="true">+</span><span>Otra</span></label>{% endif %}
+  {% if selected == 'entityBrand' %}<label><input type="radio" name="entityBrand" value="" x-model="entityBrand" :disabled="{{ disabled }}"><span class="avatar initials" aria-hidden="true">➕</span><span>Otra</span></label>{% endif %}
 </div>
 {% endmacro %}
 {% block content %}
-<header class="page-head with-actions"><h1>Deudas</h1><a class="btn ghost small-btn" href="/invitados">Compartir con un link</a></header>
+<header class="page-head with-actions"><h1>{{ ico('🤝') }}Deudas</h1><a class="btn ghost small-btn" href="/invitados">🔗 Compartir con un link</a></header>
 <div class="stack">
   <div class="totals two" aria-live="polite" aria-atomic="true">
-    <div><small>Te deben</small><strong class="pos num">{{ balances.owed_to_me | money }}</strong></div>
-    <div><small>Debés</small><strong class="neg num">{{ balances.i_owe | money }}</strong></div>
+    <div><small>🤑 Te deben</small><strong class="pos num">{{ balances.owed_to_me | money }}</strong></div>
+    <div><small>💸 Debés</small><strong class="neg num">{{ balances.i_owe | money }}</strong></div>
   </div>
   <nav class="segments" aria-label="Estado de las deudas">
-    <a href="/deudas" {% if not show_all %}aria-current="page"{% endif %}>Activas</a>
-    <a href="/deudas?todas=1" {% if show_all %}aria-current="page"{% endif %}>Saldadas</a>
+    <a href="/deudas" {% if not show_all %}aria-current="page"{% endif %}>⏳ Activas</a>
+    <a href="/deudas?todas=1" {% if show_all %}aria-current="page"{% endif %}>✅ Saldadas</a>
   </nav>
   {% include "partials/error.html" %}
   {% for c in claims %}{% set back = "/deudas" %}{% include "partials/claim.html" %}{% endfor %}
   {% for a in alerts %}<p class="marker">{{ a.card }}: la cuota {{ a.installment.number }} de <span class="num">{{ a.installment.amount | money }}</span> vence {{ a.installment.due_date | short_date }} y {{ a.person }} no te la pagó.</p>{% endfor %}
-  <button type="button" class="btn ghost block-btn" data-dialog-open="debt-dialog">Anotar una deuda</button>
+  <button type="button" class="btn ghost block-btn" data-dialog-open="debt-dialog">➕ Anotar una deuda</button>
   <dialog id="debt-dialog" class="form-sheet debt-form" aria-labelledby="debt-dialog-title">
     <section class="sheet-panel">
       <div class="dialog-handle" aria-hidden="true"></div>
-      <header class="sheet-heading"><h2 id="debt-dialog-title">Anotar una deuda</h2></header>
-      <form method="post" action="/deudas" class="stack" x-data="{ kind: 'person', direction: 'owed_to_me', cardBrand: 'visa', entityBrand: 'mercadopago' }">
+      <header class="sheet-heading"><h2 id="debt-dialog-title">📝 Anotar una deuda</h2></header>
+      <form method="post" action="/deudas" class="stack" x-data="{ kind: 'person', direction: 'owed_to_me', cardBrand: 'naranjax', entityBrand: 'mercadopago' }">
       <fieldset class="stack-sm">
         <legend>¿Con quién?</legend>
         <div class="choice">
-          <label><input type="radio" name="kind" value="person" x-model="kind" checked>Persona</label>
-          <label><input type="radio" name="kind" value="card" x-model="kind">Tarjeta</label>
-          <label><input type="radio" name="kind" value="entity" x-model="kind">Entidad</label>
+          <label><input type="radio" name="kind" value="person" x-model="kind" checked>👤 Persona</label>
+          <label><input type="radio" name="kind" value="card" x-model="kind">💳 Tarjeta</label>
+          <label><input type="radio" name="kind" value="entity" x-model="kind">🏦 Entidad</label>
         </div>
       </fieldset>
       <div x-show="kind === 'person'" class="stack">
         <label>Qué anotás
           <select name="direction" x-model="direction" :disabled="kind !== 'person'">
-            <option value="owed_to_me">Me debe</option><option value="i_owe">Le debo</option><option value="card_loan">Le presté mi tarjeta</option>
+            <option value="owed_to_me">🤑 Me debe</option><option value="i_owe">💸 Le debo</option><option value="card_loan">💳 Le presté mi tarjeta</option>
           </select>
         </label>
       </div>
@@ -115,7 +115,7 @@
 <div class="debt-groups">
   {% for group in groups %}
   <section class="card debt-group">
-    <header class="row between"><h2>{{ group.title }}</h2><span class="num soft">{{ group.subtotal | money }}</span></header>
+    <header class="row between"><h2>{{ group.title | with_emoji }}</h2><span class="num soft">{{ group.subtotal | money }}</span></header>
     {% for debt in group.debts %}{{ debt_row(debt) }}{% else %}<p class="empty">{{ 'No hay deudas saldadas en este grupo.' if show_all else 'No hay deudas pendientes.' }}</p>{% endfor %}
   </section>
   {% endfor %}

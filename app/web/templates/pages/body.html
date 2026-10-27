@@ -2,15 +2,15 @@
 {% block page_scripts %}<script src="/static/vendor/chart-4.4.7.umd.min.js?v=4.4.7"></script>{% endblock %}
 {% block layout %}page-grid{% endblock %}
 {% block content %}
-<header class="page-head"><h1>Cuerpo</h1></header>
+<header class="page-head"><h1>{{ ico('💪') }}Cuerpo</h1></header>
 
 <div class="stack">
 <form method="post" action="/cuerpo/comida" class="quick-line card">
-  <input name="text" placeholder="¿Qué comiste? Escribí y apretá Enter" autocomplete="off" autofocus enterkeyhint="send" aria-label="Qué comiste">
+  <input name="text" placeholder="🍽️ ¿Qué comiste? Escribí y apretá Enter" autocomplete="off" autofocus enterkeyhint="send" aria-label="Qué comiste">
 </form>
 
 <section class="block card">
-  <h2>Comidas de la semana</h2>
+  <h2>{{ ico('🍽️') }}Comidas de la semana</h2>
   {% for day, entries in meals_by_day.items() %}
   <div class="stack-sm">
     <h3>{{ day | short_date | capitalize }}</h3>
@@ -31,14 +31,14 @@
 </div>
 
 <section class="block card">
-  <h2>Peso</h2>
+  <h2>{{ ico('⚖️') }}Peso</h2>
   {% set w = summary %}
   {% if w.current %}
   <div class="weights">
-    <div><small>Arrancaste</small><b class="num">{{ w.start.kg | number }}</b><small>{{ w.start.date.strftime('%d/%m/%y') }}</small></div>
-    <div><small>Hoy</small><b class="num">{{ w.current.kg | number }}</b>
+    <div><small>🏁 Arrancaste</small><b class="num">{{ w.start.kg | number }}</b><small>{{ w.start.date.strftime('%d/%m/%y') }}</small></div>
+    <div><small>📍 Hoy</small><b class="num">{{ w.current.kg | number }}</b>
       {% set diff = w.current.kg - w.start.kg %}<small class="{{ 'neg' if diff > 0 else 'pos' }} num">{{ "+" if diff > 0 }}{{ diff | number }} kg</small></div>
-    <div><small>Meta</small><b class="num">{{ w.goal | number if w.goal else "—" }}</b>
+    <div><small>🎯 Meta</small><b class="num">{{ w.goal | number if w.goal else "—" }}</b>
       {% if w.goal %}<small>faltan {{ (w.current.kg - w.goal) | abs | number }} kg</small>{% endif %}</div>
   </div>
   <canvas data-chart="weight" data-values='{{ chart | tojson }}' data-goal="{{ w.goal or '' }}" height="190" role="img" aria-label="Gráfico de peso"></canvas>
@@ -50,11 +50,11 @@
     <button type="submit">Guardar</button>
   </form>
 
-  <button type="button" class="btn ghost" data-dialog-open="weight-goal-dialog">{{ 'Cambiar meta de peso' if summary.goal else 'Anotar una meta de peso' }}</button>
+  <button type="button" class="btn ghost" data-dialog-open="weight-goal-dialog">🎯 {{ 'Cambiar meta de peso' if summary.goal else 'Anotar una meta de peso' }}</button>
   <dialog id="weight-goal-dialog" class="form-sheet" aria-labelledby="weight-goal-title">
     <section class="sheet-panel">
       <div class="dialog-handle" aria-hidden="true"></div>
-      <header class="sheet-heading"><h2 id="weight-goal-title">Meta de peso</h2></header>
+      <header class="sheet-heading"><h2 id="weight-goal-title">🎯 Meta de peso</h2></header>
       <form method="post" action="/cuerpo/meta" class="stack">
         <label>Meta en kg<input name="kg" inputmode="decimal" enterkeyhint="done" placeholder="Vacío la quita" value="{{ summary.goal | number if summary.goal else '' }}" autocomplete="off" aria-label="Meta en kg"></label>
         <div class="dialog-actions"><button type="button" class="ghost" data-dialog-close>Cancelar</button><button type="submit">Guardar meta</button></div>
@@ -63,7 +63,7 @@
   </dialog>
 
   <details class="fold">
-    <summary>Historial</summary>
+    <summary>📜 Historial</summary>
     <ul class="lines tight">
       {% for weight in series %}
       <li>

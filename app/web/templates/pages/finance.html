@@ -12,16 +12,16 @@
 
   <form method="post" action="/plata" class="stack card" x-data="{ kind: 'expense' }">
     <div class="choice" role="radiogroup" aria-label="Tipo">
-      <label><input type="radio" name="kind" value="expense" x-model="kind" checked> Gasto</label>
-      <label><input type="radio" name="kind" value="income" x-model="kind"> Ingreso</label>
+      <label><input type="radio" name="kind" value="expense" x-model="kind" checked> 💸 Gasto</label>
+      <label><input type="radio" name="kind" value="income" x-model="kind"> 💰 Ingreso</label>
     </div>
     <div class="row">
       <input name="amount" data-money inputmode="decimal" placeholder="$ 0" required autocomplete="off" aria-label="Monto">
       <select name="category" x-show="kind === 'expense'" :disabled="kind !== 'expense'" aria-label="Categoría">
-        {% for c in expense_categories %}<option>{{ c }}</option>{% endfor %}
+        {% for c in expense_categories %}<option value="{{ c }}">{{ c | emoji_text }}</option>{% endfor %}
       </select>
       <select name="category" x-show="kind === 'income'" :disabled="kind !== 'income'" x-cloak aria-label="Categoría">
-        {% for c in income_categories %}<option>{{ c }}</option>{% endfor %}
+        {% for c in income_categories %}<option value="{{ c }}">{{ c | emoji_text }}</option>{% endfor %}
       </select>
     </div>
     <div class="row">
@@ -33,33 +33,33 @@
 </div>
 
 <section class="block card">
-  <h2>Resumen del mes</h2>
+  <h2>{{ ico('📊') }}Resumen del mes</h2>
   <div class="totals" aria-live="polite" aria-atomic="true">
-    <div><small>Entró</small><strong class="pos num">{{ summary.income | money }}</strong></div>
-    <div><small>Salió</small><strong class="neg num">{{ summary.expense | money }}</strong></div>
-    <div><small>Quedó</small><strong class="num {{ 'neg' if summary.balance < 0 }}">{{ summary.balance | money }}</strong></div>
+    <div><small>📥 Entró</small><strong class="pos num">{{ summary.income | money }}</strong></div>
+    <div><small>📤 Salió</small><strong class="neg num">{{ summary.expense | money }}</strong></div>
+    <div><small>🐷 Quedó</small><strong class="num {{ 'neg' if summary.balance < 0 }}">{{ summary.balance | money }}</strong></div>
   </div>
 </section>
 
 {% if summary.by_category %}
 <section class="block card">
-  <h2>En qué se fue</h2>
+  <h2>{{ ico('🍩') }}En qué se fue</h2>
   <ul class="bars">
     {% set top = summary.by_category[0][1] %}
     {% for cat, total in summary.by_category %}
-    <li><span>{{ cat }}</span><span class="bar"><span style="width: {{ (total / top * 100) | round(1) }}%"></span></span><span class="num">{{ total | money }}</span></li>
+    <li><span>{{ cat | with_emoji }}</span><span class="bar"><span style="width: {{ (total / top * 100) | round(1) }}%"></span></span><span class="num">{{ total | money }}</span></li>
     {% endfor %}
   </ul>
 </section>
 {% endif %}
 
 <section class="block card moves">
-  <h2>Movimientos</h2>
+  <h2>{{ ico('🧾') }}Movimientos</h2>
   <ul class="lines">
     {% for t in transactions %}
     <li>
       <div class="grow">
-        <span>{{ t.category }}</span>
+        <span>{{ t.category | with_emoji }}</span>
         <small>{{ t.date | short_date | capitalize }}{% if t.note %}, {{ t.note }}{% endif %}</small>
       </div>
       <strong class="num {{ 'pos' if t.kind == 'income' else '' }}">{{ '+' if t.kind == 'income' else '−' }}{{ t.amount | money }}</strong>

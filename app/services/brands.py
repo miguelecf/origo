@@ -1,21 +1,26 @@
 """Tarjetas y entidades con logo propio (los archivos están en static/brands/<slug>.png)."""
 
+# Primero las que usa el dueño.
 CARDS = {
+    "naranjax": "Naranja X",
+    "mercadopago": "Mercado Pago",
+    "brubank": "Brubank",
+    "lemon": "Lemon",
     "visa": "Visa",
     "mastercard": "Mastercard",
     "amex": "American Express",
-    "naranjax": "Naranja X",
     "cabal": "Cabal",
 }
 
 ENTITIES = {
     "mercadopago": "Mercado Pago",
     "naranjax": "Naranja X",
-    "uala": "Ualá",
+    "binance": "Binance",
     "brubank": "Brubank",
+    "lemon": "Lemon",
+    "uala": "Ualá",
     "personalpay": "Personal Pay",
     "prex": "Prex",
-    "lemon": "Lemon",
     "cuentadni": "Cuenta DNI",
     "galicia": "Galicia",
     "santander": "Santander",

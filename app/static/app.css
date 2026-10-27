@@ -577,3 +577,16 @@ button.x.danger { color: var(--neg); }
   padding: 12px 0 max(12px, env(safe-area-inset-bottom));
   background: var(--paper);
 }
+
+/* Emojis: la parte gráfica de la app */
+.emoji { display: inline-block; margin-right: 0.35em; font-style: normal; line-height: 1; }
+.tab-emoji { font-size: 24px; line-height: 28px; filter: grayscale(0.85); opacity: 0.6; transition: filter 160ms ease, opacity 160ms ease, transform 160ms ease; }
+.tabbar a[aria-current="page"] .tab-emoji { filter: none; opacity: 1; transform: scale(1.08); }
+.card h2 .emoji { font-size: 1.15em; }
+.choice .emoji { margin-right: 0.25em; }
+@media (min-width: 900px) {
+  .tab-emoji { font-size: 18px; line-height: 1; }
+}
+@media (prefers-reduced-motion: reduce) { .tab-emoji { transition: none; } }
+.breakdown > span { white-space: nowrap; }
+.breakdown .emoji { margin-right: 0.2em; }

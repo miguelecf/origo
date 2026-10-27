@@ -3,7 +3,7 @@
 {% block layout %}market-layout{% endblock %}
 {% block content %}
 <script type="application/json" id="trip-state">{{ state | tojson }}</script>
-<header class="page-head"><h1>Compra</h1></header>
+<header class="page-head"><h1>{{ ico('🧺') }}Compra</h1></header>
 <div x-data="market('trip-state')" hx-boost="false">
   <div class="till">
     <div class="till-total">

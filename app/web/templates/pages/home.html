@@ -2,34 +2,34 @@
 {% block content %}
 {% set f = o.finance %}{% set d = o.debts %}{% set w = o.weight %}{% set s = o.last_7_days %}
 <header class="page-head with-actions">
-  <div><h1>Tu mes</h1><p class="soft">{{ MONTHS[o.period[0].month - 1] | capitalize }} {{ o.period[0].year }}</p></div>
-  <a href="/invitados" class="btn ghost small-btn">Invitados con link</a>
+  <div><h1>{{ ico('📅') }}Tu mes</h1><p class="soft">{{ MONTHS[o.period[0].month - 1] | capitalize }} {{ o.period[0].year }}</p></div>
+  <a href="/invitados" class="btn ghost small-btn">🔗 Invitados con link</a>
 </header>
 <div class="stack">
-  {% if not o.today.checkin %}<a href="/dia" class="cta"><span>Hacer el check-in de hoy</span><span>1 minuto</span></a>{% endif %}
+  {% if not o.today.checkin %}<a href="/dia" class="cta"><span>✅ Hacer el check-in de hoy</span><span>1 minuto</span></a>{% endif %}
   {% for c in d.pending_claims %}{% set back = "/" %}{% include "partials/claim.html" %}{% endfor %}
-  {% for a in d.card_alerts %}<p class="marker">{{ a.card }}: la cuota {{ a.installment.number }} de <span class="num">{{ a.installment.amount | money }}</span> vence {{ a.installment.due_date | short_date }} y {{ a.person }} todavía no te la pagó.</p>{% endfor %}
+  {% for a in d.card_alerts %}<p class="marker">⚠️ {{ a.card }}: la cuota {{ a.installment.number }} de <span class="num">{{ a.installment.amount | money }}</span> vence {{ a.installment.due_date | short_date }} y {{ a.person }} todavía no te la pagó.</p>{% endfor %}
 </div>
 <div class="dashboard">
   <a href="/plata" class="card hero">
-    <h2>Balance del mes</h2><strong class="metric {{ 'neg' if f.balance < 0 else 'pos' }}">{{ f.balance | money }}</strong>
-    <div class="row wrap"><small>Entró <b>{{ f.income | money }}</b></small><small>Salió <b>{{ f.expense | money }}</b></small></div>
-    <small>{% if f.by_category %}Mayor gasto: {{ f.by_category[0][0] }}, {{ f.by_category[0][1] | money }}{% else %}Anotá tu primer ingreso o gasto{% endif %}</small>
+    <h2>{{ ico('💰') }}Balance del mes</h2><strong class="metric {{ 'neg' if f.balance < 0 else 'pos' }}">{{ f.balance | money }}</strong>
+    <div class="row wrap"><small>📥 Entró <b>{{ f.income | money }}</b></small><small>📤 Salió <b>{{ f.expense | money }}</b></small></div>
+    <small>{% if f.by_category %}Mayor gasto: {{ f.by_category[0][0] | with_emoji }}, {{ f.by_category[0][1] | money }}{% else %}Anotá tu primer ingreso o gasto{% endif %}</small>
   </a>
-  <a href="/deudas" class="card"><h2>Te deben</h2><strong class="metric pos">{{ d.owed_to_me | money }}</strong><small>Plata por cobrar</small></a>
-  <a href="/deudas" class="card"><h2>Debés</h2><strong class="metric neg">{{ d.i_owe | money }}</strong>
-    <div class="breakdown">{% for kind, name in [('card', 'Tarjetas'), ('entity', 'Entidades'), ('person', 'Personas')] %}<span>{{ name }}</span><span>{{ d.by_kind[kind].i_owe | money }}</span>{% endfor %}</div>
+  <a href="/deudas" class="card"><h2>{{ ico('🤑') }}Te deben</h2><strong class="metric pos">{{ d.owed_to_me | money }}</strong><small>Plata por cobrar</small></a>
+  <a href="/deudas" class="card"><h2>{{ ico('💸') }}Debés</h2><strong class="metric neg">{{ d.i_owe | money }}</strong>
+    <div class="breakdown">{% for kind, name in [('card', 'Tarjetas'), ('entity', 'Entidades'), ('person', 'Personas')] %}<span>{{ name | with_emoji }}</span><span>{{ d.by_kind[kind].i_owe | money }}</span>{% endfor %}</div>
   </a>
-  <a href="/deudas" class="card upcoming"><h2>Próximos vencimientos</h2>
+  <a href="/deudas" class="card upcoming"><h2>{{ ico('📆') }}Próximos vencimientos</h2>
     <ul>{% for i in d.upcoming %}<li><span class="grow">{{ i.debt.person }}<br><small>{{ i.due_date | short_date }}, cuota {{ i.number }}</small></span><strong class="num">{{ i.amount | money }}</strong></li>{% else %}<li>No hay cuotas con vencimiento pendiente.</li>{% endfor %}</ul>
   </a>
-  <a href="/cuerpo" class="card"><h2>Peso</h2><strong class="metric">{{ (w.current.kg | number ~ ' kg') if w.current else 'Sin registro' }}</strong>
+  <a href="/cuerpo" class="card"><h2>{{ ico('⚖️') }}Peso</h2><strong class="metric">{{ (w.current.kg | number ~ ' kg') if w.current else 'Sin registro' }}</strong>
     <small>{% if w.current %}Arrancaste en {{ w.start.kg | number }} kg{% if w.goal %}. Meta: {{ w.goal | number }} kg{% endif %}{% else %}Anotá tu primer peso{% endif %}</small>
   </a>
-  <a href="/dia" class="card"><h2>Sueño</h2><strong class="metric">{{ s.sleep_hours | number }} h</strong><small>Promedio de 7 días</small></a>
-  <a href="/dia" class="card"><h2>Ánimo</h2><strong class="metric">{{ s.mood | number }} <small>/ 5</small></strong><small>Promedio de 7 días</small></a>
-  <a href="/dia" class="card"><h2>Movimiento</h2><strong class="metric">{{ s.movement_min | number(0) }} min</strong><small>Promedio diario</small></a>
-  <a href="/cuerpo" class="card"><h2>Comidas de hoy</h2><strong class="metric">{{ o.today.meals }}</strong><small>Seguí anotando lo que comés</small></a>
-  <a href="{{ '/super/compra' if o.open_trip else '/super' }}" class="card"><h2>Súper</h2><strong class="metric">{{ o.open_trip.total | money if o.open_trip else o.home_pending }}</strong><small>{{ 'Compra en curso' if o.open_trip else 'Pendientes en la lista de casa' }}</small></a>
+  <a href="/dia" class="card"><h2>{{ ico('😴') }}Sueño</h2><strong class="metric">{{ s.sleep_hours | number }} h</strong><small>Promedio de 7 días</small></a>
+  <a href="/dia" class="card"><h2>{{ ico(['😐', '😞', '😕', '😐', '🙂', '😄'][s.mood | round | int] if s.mood else '😐') }}Ánimo</h2><strong class="metric">{{ s.mood | number }} <small>/ 5</small></strong><small>Promedio de 7 días</small></a>
+  <a href="/dia" class="card"><h2>{{ ico('🏃') }}Movimiento</h2><strong class="metric">{{ s.movement_min | number(0) }} min</strong><small>Promedio diario</small></a>
+  <a href="/cuerpo" class="card"><h2>{{ ico('🍽️') }}Comidas de hoy</h2><strong class="metric">{{ o.today.meals }}</strong><small>Seguí anotando lo que comés</small></a>
+  <a href="{{ '/super/compra' if o.open_trip else '/super' }}" class="card"><h2>{{ ico('🛒') }}Súper</h2><strong class="metric">{{ o.open_trip.total | money if o.open_trip else o.home_pending }}</strong><small>{{ 'Compra en curso' if o.open_trip else 'Pendientes en la lista de casa' }}</small></a>
 </div>
 {% endblock %}

@@ -98,7 +98,7 @@ def create_app() -> FastAPI:
     @app.get("/offline", include_in_schema=False)
     def offline():
         return HTMLResponse(
-            '<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f2f2f7"><title>Sin conexión | Mentor</title><link rel="stylesheet" href="/static/app.css?v=apple-2"><main class="offline"><h1>Estás sin conexión</h1><p>Mentor necesita señal para mostrar tus datos privados. Lo que ya anotaste en la compra sigue guardado en este teléfono.</p><a class="btn" href="/">Volver a intentar</a></main></html>',
+            '<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f2f2f7"><title>Sin conexión | Mentor</title><link rel="stylesheet" href="/static/app.css?v=apple-3"><main class="offline"><h1>Estás sin conexión</h1><p>Mentor necesita señal para mostrar tus datos privados. Lo que ya anotaste en la compra sigue guardado en este teléfono.</p><a class="btn" href="/">Volver a intentar</a></main></html>',
             headers={"Cache-Control": "no-store"},
         )
 

@@ -1,16 +1,16 @@
 {% extends "base.html" %}
 {% block layout %}page-grid{% endblock %}
 {% block content %}
-<header class="page-head"><h1>Súper</h1></header>
+<header class="page-head"><h1>{{ ico('🛒') }}Súper</h1></header>
 
 {% if open_trip %}
-<a href="/super/compra" class="cta"><span>Seguir con la compra</span><span class="num">{{ open_trip.total | money }}</span></a>
+<a href="/super/compra" class="cta"><span>🧺 Seguir con la compra</span><span class="num">{{ open_trip.total | money }}</span></a>
 {% else %}
-<a href="/super/compra" class="cta"><span>Ir al súper</span><span>Anotá precios y yo sumo</span></a>
+<a href="/super/compra" class="cta"><span>🛒 Ir al súper</span><span>Anotá precios y yo sumo</span></a>
 {% endif %}
 
 <section class="block card">
-  <h2>Lista de casa</h2>
+  <h2>{{ ico('🏠') }}Lista de casa</h2>
   <form method="post" action="/super/casa" class="row">
     <input name="text" placeholder="Leche, pan, yerba…" autocomplete="off" required enterkeyhint="done" aria-label="Qué falta">
     <button type="submit">Agregar</button>
@@ -36,10 +36,10 @@
   <div class="row wrap">
     {% if pending %}
     <a class="btn whatsapp grow" href="{{ whatsapp_url }}" target="_blank" rel="noopener" hx-boost="false"
-       data-share-text="{{ whatsapp_text }}" onclick="return shareList(this)">Mandar la lista por WhatsApp</a>
+       data-share-text="{{ whatsapp_text }}" onclick="return shareList(this)">💬 Mandar la lista por WhatsApp</a>
     {% endif %}
     {% if items | selectattr("done") | list %}
-    <form method="post" action="/super/casa/limpiar" data-confirm="¿Borrar todos los productos tachados?"><button class="ghost destructive">Borrar tachados</button></form>
+    <form method="post" action="/super/casa/limpiar" data-confirm="¿Borrar todos los productos tachados?"><button class="ghost destructive">🧹 Borrar tachados</button></form>
     {% endif %}
   </div>
   {% endif %}
@@ -47,7 +47,7 @@
 
 {% if trips %}
 <section class="block card">
-  <h2>Últimas compras</h2>
+  <h2>{{ ico('🧾') }}Últimas compras</h2>
   <ul class="lines">
     {% for t in trips %}
     <li>

@@ -4,6 +4,7 @@ from pathlib import Path
 
 from fastapi import Request
 from fastapi.templating import Jinja2Templates
+from markupsafe import Markup, escape
 
 from app.core.clock import today
 from app.core.config import settings
@@ -46,8 +47,34 @@ def join_y(values) -> str:
     return " y ".join([", ".join(values[:-1]), values[-1]]) if len(values) > 1 else "".join(values)
 
 
-templates.env.filters.update(money=money, number=number, short_date=short_date, join_y=join_y)
-templates.env.globals.update(app_name=settings.APP_NAME, owner_name=settings.OWNER_NAME, MONTHS=MONTHS)
+# Emoji por categoría o grupo; lo que no está en la lista va sin emoji.
+EMOJI = {
+    "Súper": "🛒", "Comida afuera": "🍔", "Casa": "🏠", "Servicios": "💡", "Transporte": "🚌",
+    "Salud": "💊", "Ocio": "🎉", "Ropa": "👕", "Deudas": "🤝", "Otros": "📦",
+    "Sueldo": "💼", "Extra": "✨",
+    "Te deben": "🤑", "Tarjetas": "💳", "Entidades": "🏦", "Le debés a personas": "👥", "Personas": "👥",
+}
+
+
+def ico(char: str) -> Markup:
+    """Emoji decorativo: se ve pero VoiceOver no lo lee."""
+    return Markup('<span class="emoji" aria-hidden="true">{}</span>').format(char)
+
+
+def with_emoji(text: str) -> Markup:
+    char = EMOJI.get(text)
+    return ico(char) + escape(text) if char else escape(text)
+
+
+def emoji_text(text: str) -> str:
+    """Para <option>, donde no entran etiquetas."""
+    char = EMOJI.get(text)
+    return f"{char} {text}" if char else text
+
+
+templates.env.filters.update(money=money, number=number, short_date=short_date, join_y=join_y,
+                             with_emoji=with_emoji, emoji_text=emoji_text)
+templates.env.globals.update(app_name=settings.APP_NAME, owner_name=settings.OWNER_NAME, MONTHS=MONTHS, ico=ico)
 
 
 def render(request: Request, name: str, **context):

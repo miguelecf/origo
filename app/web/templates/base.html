@@ -10,12 +10,12 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="{{ app_name }}">
   <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="icon" href="/static/icon.svg?v=apple-2" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="/static/icons/icon-180.png?v=apple-2">
-  <link rel="stylesheet" href="/static/app.css?v=apple-2">
+  <link rel="icon" href="/static/icon.svg?v=apple-3" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/icons/icon-180.png?v=apple-3">
+  <link rel="stylesheet" href="/static/app.css?v=apple-3">
   <script src="/static/vendor/htmx-2.0.4.min.js?v=2.0.4"></script>
   {% block page_scripts %}{% endblock %}
-  <script src="/static/app.js?v=apple-2"></script>
+  <script src="/static/app.js?v=apple-3"></script>
   <script defer src="/static/vendor/alpine-3.14.8.min.js?v=3.14.8"></script>
 </head>
 <body hx-boost="true">
@@ -25,28 +25,20 @@
   {% if viewer %}
   {% if not viewer.is_owner or active == "/" %}
   <form method="post" action="/logout" hx-boost="false" class="mobile-account-action">
-    <button type="submit" class="text">Salir</button>
+    <button type="submit" class="text">👋 Salir</button>
   </form>
   {% endif %}
-  {% set icons = {
-    "home": '<path d="M4 11l8-7 8 7v8a1 1 0 0 1-1 1h-4v-6H9v6H5a1 1 0 0 1-1-1z"/>',
-    "plata": '<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M16 15h2"/>',
-    "deudas": '<path d="M7 7h11l-3-3M17 17H6l3 3"/>',
-    "cuerpo": '<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
-    "super": '<path d="M3 4h2l2.2 10.2a1 1 0 0 0 1 .8h8.6a1 1 0 0 0 1-.8L20 8H6.2"/><circle cx="9" cy="19" r="1.3"/><circle cx="17" cy="19" r="1.3"/>',
-    "dia": '<circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/>',
-  } %}
   {% if viewer.is_owner %}
-    {% set tabs = [("/", "Inicio", "home"), ("/plata", "Plata", "plata"), ("/deudas", "Deudas", "deudas"), ("/cuerpo", "Cuerpo", "cuerpo"), ("/super", "Súper", "super"), ("/dia", "Día", "dia")] %}
+    {% set tabs = [("/", "Inicio", "🏠"), ("/plata", "Plata", "💰"), ("/deudas", "Deudas", "🤝"), ("/cuerpo", "Cuerpo", "💪"), ("/super", "Súper", "🛒"), ("/dia", "Día", "☀️")] %}
   {% else %}
-    {% set tabs = ([ ("/super", "Súper", "super") ] if viewer.can("lists") else []) + ([ ("/deudas", "Deudas", "deudas") ] if viewer.can("debts") else []) %}
+    {% set tabs = ([ ("/super", "Súper", "🛒") ] if viewer.can("lists") else []) + ([ ("/deudas", "Deudas", "🤝") ] if viewer.can("debts") else []) %}
   {% endif %}
   <nav class="tabbar" aria-label="Secciones">
     <div class="tabs">
-      <span class="nav-brand">{{ app_name }}</span>
+      <span class="nav-brand">🧭 {{ app_name }}</span>
     {% for href, label, icon in tabs %}
       <a href="{{ href }}" {% if active == href or (href != "/" and active.startswith(href)) %}aria-current="page"{% endif %}>
-        <svg viewBox="0 0 24 24" aria-hidden="true">{{ icons[icon] | safe }}</svg><span>{{ label }}</span>
+        <span class="tab-emoji" aria-hidden="true">{{ icon }}</span><span>{{ label }}</span>
       </a>
     {% endfor %}
       <form method="post" action="/logout" hx-boost="false" class="logout">

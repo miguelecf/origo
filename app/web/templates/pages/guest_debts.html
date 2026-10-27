@@ -2,7 +2,7 @@
 {% block layout %}page-grid{% endblock %}
 {% block content %}
 <header class="page-head">
-  <h1>Hola, {{ viewer.guest.name }}</h1>
+  <h1>{{ ico('👋') }}Hola, {{ viewer.guest.name }}</h1>
   <p class="summary">
     {% set total_owe = namespace(v=0) %}{% for d in owes_me %}{% set total_owe.v = total_owe.v + remaining(d) %}{% endfor %}
     {% set total_back = namespace(v=0) %}{% for d in i_owe %}{% set total_back.v = total_back.v + remaining(d) %}{% endfor %}
@@ -20,7 +20,7 @@
 
   {% if payable %}
   <form method="post" action="/deudas/avisar" class="stack card" x-data="{ picked: [] }">
-    <h2>¿Qué le pagaste?</h2>
+    <h2>{{ ico('💸') }}¿Qué le pagaste?</h2>
     <p class="soft">Marcá lo que ya pagaste y {{ owner_name }} lo confirma.</p>
     {% for d in owes_me if remaining(d) > 0 %}
     <div>
@@ -38,7 +38,7 @@
               <input type="checkbox" name="installment_ids" value="{{ i.id }}" x-model="picked">
             {% endif %}
             <span class="what num">{% if d.installments | length > 1 %}Cuota {{ i.number }}: {% endif %}{{ i.amount | money }}</span>
-            {% if i.id in claimed %}<span class="tag marker-tag">esperando a {{ owner_name }}</span>{% endif %}
+            {% if i.id in claimed %}<span class="tag marker-tag">⏳ esperando a {{ owner_name }}</span>{% endif %}
             <span class="when">{% if i.paid_on %}pagada {{ i.paid_on | short_date }}{% elif i.due_date %}{{ 'venció' if late else 'vence' }} {{ i.due_date | short_date }}{% endif %}</span>
           </label>
         </li>
@@ -55,7 +55,7 @@
 
 {% if i_owe %}
 <section class="block card">
-  <h2>Lo que te debe {{ owner_name }}</h2>
+  <h2>{{ ico('🤑') }}Lo que te debe {{ owner_name }}</h2>
   {% for d in i_owe if remaining(d) > 0 %}
   <ul class="cuotas">
     {% for i in d.installments %}
@@ -70,7 +70,7 @@
 
 {% if claims %}
 <section class="block card">
-  <h2>Tus avisos</h2>
+  <h2>{{ ico('🔔') }}Tus avisos</h2>
   <ul class="lines">
     {% for c in claims %}
     <li>

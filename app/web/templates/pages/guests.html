@@ -2,7 +2,7 @@
 {% block layout %}page-grid{% endblock %}
 {% block content %}
 <header class="page-head">
-  <h1>Invitados</h1>
+  <h1>{{ ico('👥') }}Invitados</h1>
   <p class="soft">Cada invitado entra con su propio link, sin contraseña, y ve solo lo que le habilitás.</p>
 </header>
 
@@ -20,11 +20,11 @@
   </div>
   {% endif %}
 
-  <button type="button" class="btn ghost block-btn" data-dialog-open="guest-dialog">Invitar a alguien</button>
+  <button type="button" class="btn ghost block-btn" data-dialog-open="guest-dialog">➕ Invitar a alguien</button>
   <dialog id="guest-dialog" class="form-sheet" aria-labelledby="guest-dialog-title">
     <section class="sheet-panel">
       <div class="dialog-handle" aria-hidden="true"></div>
-      <header class="sheet-heading"><h2 id="guest-dialog-title">Invitar a alguien</h2></header>
+      <header class="sheet-heading"><h2 id="guest-dialog-title">✉️ Invitar a alguien</h2></header>
       <form method="post" action="/invitados" class="stack">
       <input name="name" required placeholder="Nombre. Ej. Ana" autocomplete="name" aria-label="Nombre">
       <fieldset class="stack-sm">
@@ -43,12 +43,12 @@
 </div>
 
 <section class="block card">
-  <h2>Con acceso</h2>
+  <h2>{{ ico('🔗') }}Con acceso</h2>
   <ul class="lines guest-list">
     {% for g in guests %}
     <li>
       <div class="grow">
-        <span>{{ g.name }}{% if g.revoked_at %} <span class="tag">sin acceso</span>{% endif %}</span>
+        <span>{{ g.name }}{% if g.revoked_at %} <span class="tag">🚫 sin acceso</span>{% endif %}</span>
         <small>{{ [("Súper" if g.can_lists else ""), ("deudas de " ~ g.person if g.can_debts else "")] | select | join(" y ") }}.
           {% if g.last_seen_at %}Entró {{ g.last_seen_at | short_date }}.{% else %}Todavía no entró.{% endif %}</small>
       </div>

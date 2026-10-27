@@ -27,7 +27,7 @@ def test_card_and_entity_catalog_names(db):
 
 
 @pytest.mark.parametrize("change", [
-    {"kind": "unknown"}, {"brand": "mercadopago"}, {"kind": "entity", "brand": "visa"},
+    {"kind": "unknown"}, {"brand": "galicia"}, {"kind": "entity", "brand": "visa"},
     {"direction": "owed_to_me"}, {"kind": "entity", "brand": "uala", "direction": "owed_to_me"},
     {"first_due": None}, {"brand": None}, {"kind": "person"},
     {"kind": "entity", "brand": None, "person": " "}, {"installments": 0}, {"installments": None},

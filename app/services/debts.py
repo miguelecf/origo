@@ -43,7 +43,7 @@ def _build_debt(
         raise ValueError("Poné un nombre")
     if direction not in DIRECTIONS:
         raise ValueError("direction debe ser 'owed_to_me' o 'i_owe'")
-    if installments < 1:
+    if not isinstance(installments, int) or isinstance(installments, bool) or installments < 1:
         raise ValueError("Tiene que haber al menos una cuota")
     if not Decimal(total).is_finite() or Decimal(total) <= 0:
         raise ValueError("El monto tiene que ser mayor a cero")
@@ -202,6 +202,16 @@ def due_until(db: Session, until: dt.date) -> list[Installment]:
         .options(selectinload(Installment.debt).selectinload(Debt.installments))
         .where(Installment.paid_on.is_(None), Installment.due_date.is_not(None), Installment.due_date <= until)
         .order_by(Installment.due_date)
+    ))
+
+
+def upcoming_installments(db: Session, limit: int = 3) -> list[Installment]:
+    """Primeros vencimientos pendientes, incluyendo atrasados y fechas fuera de esta semana."""
+    return list(db.scalars(
+        select(Installment).join(Debt)
+        .options(selectinload(Installment.debt))
+        .where(Installment.paid_on.is_(None), Installment.due_date.is_not(None))
+        .order_by(Installment.due_date, Installment.id).limit(limit)
     ))
 
 

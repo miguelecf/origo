@@ -8,6 +8,49 @@ function parseNum(text, { thousands = true } = {}) {
   return Number.isFinite(n) && n > 0 ? n : 0;
 }
 
+// Formato de edición: no convierte a Number ni redondea lo que todavía se escribe.
+function formatMoneyInput(value) {
+  const clean = String(value ?? "").replace(/[^\d,]/g, "");
+  const [whole, ...decimal] = clean.split(",");
+  const integer = whole.replace(/^0+(?=\d)/, "");
+  const grouped = integer.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+  return grouped + (decimal.length ? "," + decimal.join("").slice(0, 2) : "");
+}
+
+// Borrar junto a un separador borra una cifra, no un punto que reaparecería.
+document.addEventListener("beforeinput", (event) => {
+  const input = event.target;
+  if (!input.matches?.("input[data-money]") || input.selectionStart !== input.selectionEnd) return;
+  const pos = input.selectionStart;
+  if (event.inputType === "deleteContentBackward" && input.value[pos - 1] === ".") {
+    input.setSelectionRange(Math.max(0, pos - 2), pos);
+  } else if (event.inputType === "deleteContentForward" && input.value[pos] === ".") {
+    input.setSelectionRange(pos, pos + 2);
+  }
+}, true);
+
+// Captura: Alpine recibe el valor ya formateado. La posición sigue a las cifras, no a los puntos.
+document.addEventListener("input", (event) => {
+  const input = event.target;
+  if (!input.matches?.("input[data-money]") || event.isComposing) return;
+  const raw = input.value;
+  const start = input.selectionStart ?? raw.length;
+  const end = input.selectionEnd ?? start;
+  const formatted = formatMoneyInput(raw);
+  const removedZeros = (raw.replace(/[^\d,]/g, "").match(/^0+(?=\d)/) || [""])[0].length;
+  const position = (offset) => {
+    const count = Math.max(0, raw.slice(0, offset).replace(/[^\d,]/g, "").length - removedZeros);
+    if (!count) return 0;
+    let seen = 0;
+    for (let i = 0; i < formatted.length; i++) {
+      if (/[\d,]/.test(formatted[i]) && ++seen === count) return i + 1;
+    }
+    return formatted.length;
+  };
+  input.value = formatted;
+  input.setSelectionRange(position(start), position(end));
+}, true);
+
 const moneyFormat = new Intl.NumberFormat("es-AR", { maximumFractionDigits: 2 });
 const money = (n) => "$ " + moneyFormat.format(Math.round(n * 100) / 100);
 const normalize = (name) => name.trim().replace(/\s+/g, " ").toLowerCase();
@@ -34,8 +77,11 @@ document.addEventListener("alpine:init", () => {
     const source = local?.dirty ? local : state; // si quedó algo sin sincronizar, gana lo del teléfono
 
     return {
-      items: source.items.map((item) => withKey(source === state ? { ...item, price: toLocal(item.price), qty: toLocal(item.qty) } : item)),
-      budget: source === state ? toLocal(source.budget) : source.budget,
+      items: source.items.map((item) => withKey({ ...item,
+        price: formatMoneyInput(source === state ? toLocal(item.price) : item.price),
+        qty: source === state ? toLocal(item.qty) : item.qty,
+      })),
+      budget: formatMoneyInput(source === state ? toLocal(source.budget) : source.budget),
       lastPrices: state.lastPrices,
       draft: { name: "", price: "", qty: "", hint: "" },
       status: "Guardado.",

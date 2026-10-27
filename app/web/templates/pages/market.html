@@ -1,12 +1,13 @@
 {% extends "base.html" %}
-{% block title %}Súper · {{ app_name }}{% endblock %}
+{% block title %}Súper | {{ app_name }}{% endblock %}
+{% block layout %}market-layout{% endblock %}
 {% block content %}
 <script type="application/json" id="trip-state">{{ state | tojson }}</script>
 <div x-data="market('trip-state')" hx-boost="false">
   <div class="till">
     <div class="till-total">
       <span class="big" x-text="money(total)" aria-live="polite"></span>
-      <input class="budget" x-model="budget" @input="changed()" inputmode="decimal" placeholder="Presupuesto" aria-label="Presupuesto">
+      <input data-money class="budget" x-model="budget" @input="changed()" inputmode="decimal" placeholder="Presupuesto" aria-label="Presupuesto">
     </div>
     <template x-if="budgetValue > 0">
       <div class="stack-sm" style="gap: 0.25rem">
@@ -20,7 +21,7 @@
   {% include "partials/error.html" %}
 
   <form class="entry" @submit.prevent="add()">
-    <input x-model="draft.price" x-ref="price" class="price-in" inputmode="decimal" enterkeyhint="done"
+    <input data-money x-model="draft.price" x-ref="price" class="price-in" inputmode="decimal" enterkeyhint="done"
            placeholder="$ 0" autocomplete="off" aria-label="Precio" autofocus>
     <input x-model="draft.name" @input="suggest()" list="known-products" placeholder="Qué es (opcional)" autocomplete="off" aria-label="Producto">
     <input x-model="draft.qty" inputmode="decimal" placeholder="×1" autocomplete="off" aria-label="Cantidad">
@@ -33,7 +34,7 @@
 
   <div class="ticket">
     <header>
-      <b>COMPRA</b>
+      <b>Compra</b>
       <small>{{ trip.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
       {% if viewer.guest %}<small>{{ viewer.guest.name }}</small>{% endif %}
     </header>
@@ -47,14 +48,14 @@
           <span class="edit">
             <input class="q" x-model="item.qty" @input="changed()" inputmode="decimal" aria-label="Cantidad">
             <span>×</span>
-            <input class="p" x-model="item.price" @input="changed()" inputmode="decimal" :placeholder="hintFor(item) || 'precio'" aria-label="Precio">
+            <input data-money class="p" x-model="item.price" @input="changed()" inputmode="decimal" :placeholder="hintFor(item) || 'precio'" aria-label="Precio">
           </span>
           <template x-if="trend(item)"><span class="trend" :class="trend(item).up ? 'up' : 'down'" x-text="trend(item).text"></span></template>
         </li>
       </template>
     </ol>
     <p class="blank" x-show="items.length === 0">Escribí el primer precio arriba y apretá Enter.</p>
-    <footer><span>TOTAL</span><span class="num" x-text="money(total)"></span></footer>
+    <footer><span>Total</span><span class="num" x-text="money(total)"></span></footer>
     <small style="display:block; text-align:center; margin-top:0.6rem; color:#6e6c66" x-text="items.length + (items.length === 1 ? ' producto' : ' productos') + (unpriced ? ', ' + unpriced + ' sin precio' : '') + '. ' + status"></small>
   </div>
 

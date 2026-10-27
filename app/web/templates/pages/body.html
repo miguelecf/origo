@@ -1,12 +1,15 @@
 {% extends "base.html" %}
+{% block layout %}page-grid{% endblock %}
 {% block content %}
 <header class="page-head"><h1>Cuerpo</h1></header>
 
-<form method="post" action="/cuerpo/comida" class="quick-line">
+<div class="stack">
+<form method="post" action="/cuerpo/comida" class="quick-line card">
   <input name="text" placeholder="¿Qué comiste? Escribí y apretá Enter" autocomplete="off" autofocus enterkeyhint="send" aria-label="Qué comiste">
 </form>
 
-<section class="block">
+<section class="block card">
+  <h2>Comidas de la semana</h2>
   {% for day, entries in meals_by_day.items() %}
   <div class="stack-sm">
     <h3>{{ day | short_date | capitalize }}</h3>
@@ -24,8 +27,9 @@
   <p class="soft">No anotaste comidas esta semana. Escribí la primera arriba.</p>
   {% endfor %}
 </section>
+</div>
 
-<section class="block">
+<section class="block card">
   <h2>Peso</h2>
   {% set w = summary %}
   {% if w.current %}

@@ -42,7 +42,7 @@ def test_card_and_entity_catalog_names(db):
     {"kind": "unknown"}, {"brand": "mercadopago"}, {"kind": "entity", "brand": "visa"},
     {"direction": "owed_to_me"}, {"kind": "entity", "brand": "uala", "direction": "owed_to_me"},
     {"first_due": None}, {"brand": None}, {"kind": "person"},
-    {"kind": "entity", "brand": None, "person": " "}, {"installments": 0},
+    {"kind": "entity", "brand": None, "person": " "}, {"installments": 0}, {"installments": None},
     {"total": Decimal("0")}, {"total": Decimal("NaN")}, {"total": Decimal("Infinity")},
 ])
 def test_invalid_debts_do_not_persist(db, change):
@@ -109,6 +109,7 @@ def test_form_money_and_new_kinds(client, db):
 def test_form_validation(client, db):
     client.post("/deudas", data={"kind": "card", "direction": "owed_to_me", "brand": "visa", "total": "100"})
     client.post("/deudas", data={"kind": "entity", "direction": "i_owe", "total": "100"})
+    client.post("/deudas", data={"kind": "person", "direction": "i_owe", "person": "Ana", "total": "100", "installments": "cuatro"})
     assert db.scalars(select(Debt)).all() == []
 
 

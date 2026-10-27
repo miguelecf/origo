@@ -76,7 +76,7 @@ def add(
             raise ValueError("El monto no es un número")
         debts.create_from_form(
             db, kind=kind, direction=direction, person=person, card=card, brand=brand,
-            total=amount, installments=parts if parts is not None else 1,
+            total=amount, installments=parts,
             first_due=due, description=description,
         )
     except ValueError as exc:

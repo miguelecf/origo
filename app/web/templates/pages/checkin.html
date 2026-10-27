@@ -1,11 +1,12 @@
 {% extends "base.html" %}
+{% block layout %}page-grid{% endblock %}
 {% block content %}
 <header class="page-head">
   <h1>{{ 'Hoy' if day == today else day | short_date | capitalize }}</h1>
   {% if saved %}<p class="ok" role="status">Guardado.</p>{% endif %}
 </header>
 
-<form method="post" action="/dia" class="stack">
+<form method="post" action="/dia" class="stack card">
   <input type="hidden" name="date" value="{{ day.isoformat() }}">
   <div class="row">
     <label class="grow">Horas de sueño
@@ -29,7 +30,8 @@
   <button type="submit">Guardar el día</button>
 </form>
 
-<details class="sheet block" {% if day.weekday() in (6, 0) and not review %}open{% endif %}>
+<div class="stack">
+<details class="sheet" {% if day.weekday() in (6, 0) and not review %}open{% endif %}>
   <summary class="row between"><b>Semana del {{ week.day }}/{{ week.month }}</b><span class="soft">{{ "hecha" if review else "+" }}</span></summary>
   <form method="post" action="/dia/semana" class="stack">
     <input type="hidden" name="date" value="{{ day.isoformat() }}">
@@ -39,7 +41,7 @@
   </form>
 </details>
 
-<section class="block">
+<section class="block card">
   <h2>Últimos días</h2>
   <p class="soft">En promedio, {{ averages.sleep_hours | number }} h de sueño, ánimo {{ averages.mood | number }} de 5 y {{ averages.movement_min | number(0) }} minutos de movimiento.</p>
   <ul class="lines tight">
@@ -59,4 +61,5 @@
     <button type="submit" class="ghost">Ir a ese día</button>
   </form>
 </section>
+</div>
 {% endblock %}

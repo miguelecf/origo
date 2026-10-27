@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block layout %}page-grid{% endblock %}
 {% block content %}
 <header class="page-head"><h1>Súper</h1></header>
 
@@ -8,7 +9,7 @@
 <a href="/super/compra" class="cta"><span>Ir al súper</span><span>Anotá precios y yo sumo</span></a>
 {% endif %}
 
-<section class="block">
+<section class="block card">
   <h2>Lista de casa</h2>
   <form method="post" action="/super/casa" class="row">
     <input name="text" placeholder="Leche, pan, yerba…" autocomplete="off" required enterkeyhint="done" aria-label="Qué falta">
@@ -45,7 +46,7 @@
 </section>
 
 {% if trips %}
-<section class="block">
+<section class="block card">
   <h2>Últimas compras</h2>
   <ul class="lines">
     {% for t in trips %}

@@ -40,11 +40,11 @@
 {% macro brand_picker(catalog, selected, disabled) %}
 <div class="brand-grid">
   {% for slug, name in catalog.items() %}
-  <label><input type="radio" name="brand" value="{{ slug }}" x-model="{{ selected }}" :disabled="{{ disabled }}">
+  <label><input type="radio" name="{{ selected }}" value="{{ slug }}" x-model="{{ selected }}" :disabled="{{ disabled }}">
     <img src="/static/brands/{{ slug }}.png" alt="" width="40" height="40"><span>{{ name }}</span>
   </label>
   {% endfor %}
-  {% if selected == 'entityBrand' %}<label><input type="radio" name="brand" value="" x-model="entityBrand" :disabled="{{ disabled }}"><span class="avatar initials" aria-hidden="true">+</span><span>Otra</span></label>{% endif %}
+  {% if selected == 'entityBrand' %}<label><input type="radio" name="entityBrand" value="" x-model="entityBrand" :disabled="{{ disabled }}"><span class="avatar initials" aria-hidden="true">+</span><span>Otra</span></label>{% endif %}
 </div>
 {% endmacro %}
 {% block content %}
@@ -80,6 +80,7 @@
         </label>
       </div>
       <input type="hidden" name="direction" value="i_owe" :disabled="kind === 'person'">
+      <input type="hidden" name="brand" :value="kind === 'entity' ? entityBrand : cardBrand" :disabled="kind === 'person' && direction !== 'card_loan'">
       <fieldset x-show="kind === 'card' || (kind === 'person' && direction === 'card_loan')" x-cloak>
         <legend>Marca de la tarjeta</legend>
         {{ brand_picker(cards, 'cardBrand', "!(kind === 'card' || (kind === 'person' && direction === 'card_loan'))") }}

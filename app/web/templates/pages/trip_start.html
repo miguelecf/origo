@@ -1,11 +1,12 @@
 {% extends "base.html" %}
+{% block layout %}market-layout{% endblock %}
 {% block content %}
 <header class="page-head">
   <h1>Ir al súper</h1>
   <p class="soft">Anotá cada precio a medida que lo agarrás. El total se va sumando solo.</p>
 </header>
 
-<div class="stack">
+<div class="stack card">
   {% if pending %}
   <form method="post" action="/super/compra/empezar">
     <input type="hidden" name="from_list" value="true">

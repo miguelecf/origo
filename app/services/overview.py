@@ -20,6 +20,7 @@ def overview(db: Session, start: dt.date | None = None, end: dt.date | None = No
         "debts": {
             **debts.balances(db),
             "due_soon": debts.due_until(db, week_ahead),
+            "upcoming": debts.upcoming_installments(db),
             "card_alerts": debts.card_alerts(db, week_ahead),
             "pending_claims": guests.pending_claims(db),
         },
@@ -28,7 +29,10 @@ def overview(db: Session, start: dt.date | None = None, end: dt.date | None = No
         "today": {
             "checkin": checkins.get_checkin(db, day),
             "meals": db.scalar(
-                select(func.count(FoodEntry.id)).where(FoodEntry.at >= dt.datetime.combine(day, dt.time()))
+                select(func.count(FoodEntry.id)).where(
+                    FoodEntry.at >= dt.datetime.combine(day, dt.time()),
+                    FoodEntry.at < dt.datetime.combine(day + dt.timedelta(days=1), dt.time()),
+                )
             ),
         },
         "home_pending": db.scalar(select(func.count(HomeItem.id)).where(HomeItem.done.is_(False))),

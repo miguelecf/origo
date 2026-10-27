@@ -1,10 +1,14 @@
+import datetime as dt
 import hashlib
 import secrets
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.clock import now
+from app.core.logging import event
+from app.core.config import settings
 from app.models import Debt, Guest, Installment, PaymentClaim
 from app.services import debts
 
@@ -14,7 +18,8 @@ def _hash(token: str) -> str:
 
 
 def create_guest(
-    db: Session, *, name: str, person: str = "", can_lists: bool = False, can_debts: bool = False
+    db: Session, *, name: str, person: str = "", can_lists: bool = False, can_debts: bool = False,
+    expires_at: dt.datetime | None = None,
 ) -> tuple[Guest, str]:
     """Devuelve el invitado y su token. El token no se guarda: solo se puede ver ahora."""
     name = name.strip()
@@ -22,10 +27,12 @@ def create_guest(
         raise ValueError("Poné un nombre")
     if not (can_lists or can_debts):
         raise ValueError("Elegí al menos una cosa que pueda ver")
+    if expires_at is not None and expires_at.tzinfo is not None:
+        expires_at = expires_at.astimezone(ZoneInfo(settings.TIMEZONE)).replace(tzinfo=None)
     token = secrets.token_urlsafe(24)
     guest = Guest(
         name=name, person=(person.strip() or name), token_hash=_hash(token),
-        can_lists=can_lists, can_debts=can_debts,
+        can_lists=can_lists, can_debts=can_debts, expires_at=expires_at,
     )
     db.add(guest)
     db.commit()
@@ -40,6 +47,7 @@ def rotate_token(db: Session, guest_id: int) -> str:
     token = secrets.token_urlsafe(24)
     guest.token_hash, guest.revoked_at = _hash(token), None
     db.commit()
+    event("guest_link_rotated", guest_id=guest.id)
     return token
 
 
@@ -47,19 +55,21 @@ def revoke(db: Session, guest_id: int) -> None:
     if guest := db.get(Guest, guest_id):
         guest.revoked_at = now()
         db.commit()
+        event("guest_link_revoked", guest_id=guest.id)
 
 
 def by_token(db: Session, token: str) -> Guest | None:
     guest = db.scalar(select(Guest).where(Guest.token_hash == _hash(token), Guest.revoked_at.is_(None)))
-    if guest:
+    if guest and (guest.expires_at is None or guest.expires_at > now()):
         guest.last_seen_at = now()
         db.commit()
-    return guest
+        return guest
+    return None
 
 
 def active(db: Session, guest_id: int | None) -> Guest | None:
     guest = db.get(Guest, guest_id) if guest_id else None
-    return guest if guest and guest.revoked_at is None else None
+    return guest if guest and guest.revoked_at is None and (guest.expires_at is None or guest.expires_at > now()) else None
 
 
 def list_guests(db: Session) -> list[Guest]:

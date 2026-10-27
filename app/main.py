@@ -1,26 +1,30 @@
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from fastapi import Depends, FastAPI
 from fastapi.staticfiles import StaticFiles
-from starlette.middleware.sessions import SessionMiddleware
+from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.responses import JSONResponse
 
 from app.core.config import settings
 from app.core.database import init_db
-from app.mcp_server import mcp
+from app.core.logging import configure_logging
+from app.mcp_server import remote_http_app
 from app.routers import auth, body, checkin, debts, finance, guests, home, lists
 from app.web.auth import require_owner
+from app.web.security import SecurityMiddleware
 
 
 def create_app() -> FastAPI:
+    settings.validate_security()
+    configure_logging()
     init_db()
-    # El MCP remoto solo se monta con OAuth configurado; sin eso, se usa local por stdio.
-    mcp_app = mcp.http_app(path="/mcp") if settings.remote_mcp_enabled else None
+    mcp_app = remote_http_app() if settings.remote_mcp_enabled else None
 
-    app = FastAPI(title=settings.APP_NAME, lifespan=mcp_app.lifespan if mcp_app else None)
-    app.add_middleware(
-        SessionMiddleware, secret_key=settings.SECRET_KEY, max_age=60 * 60 * 24 * 90,
-        https_only=settings.BASE_URL.startswith("https"),
-    )
+    app = FastAPI(title=settings.APP_NAME, lifespan=mcp_app.lifespan if mcp_app else None,
+                  docs_url=None, redoc_url=None, openapi_url=None, debug=False)
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=[urlsplit(settings.BASE_URL).hostname, "localhost", "127.0.0.1", "::1"], www_redirect=False)
+    app.add_middleware(SecurityMiddleware)
     app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 
     app.include_router(auth.router)
@@ -31,7 +35,13 @@ def create_app() -> FastAPI:
         app.include_router(module.router, dependencies=[Depends(require_owner)])
 
     if mcp_app:
-        app.mount("/", mcp_app)  # va al final: /mcp y las rutas de OAuth (/authorize, /token, ...)
+        app.mount("/", mcp_app)  # Al final: MCP y OAuth, nunca acceso anónimo.
+    else:
+        @app.api_route("/mcp", methods=["GET", "POST", "DELETE"])
+        @app.api_route("/mcp/{path:path}", methods=["GET", "POST", "DELETE"])
+        def mcp_disabled(path: str = ""):
+            return JSONResponse({"detail": "MCP remoto no habilitado"}, status_code=401,
+                                headers={"WWW-Authenticate": "Bearer"})
     return app
 
 

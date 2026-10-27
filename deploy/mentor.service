@@ -1,0 +1,45 @@
+[Unit]
+Description=Mentor personal
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=mentor
+Group=mentor
+WorkingDirectory=/opt/mentor
+EnvironmentFile=/etc/mentor/mentor.env
+Environment=HOME=/var/lib/mentor
+Environment=XDG_DATA_HOME=/var/lib/mentor
+Environment=PYTHONDONTWRITEBYTECODE=1
+ExecStart=/opt/mentor/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --proxy-headers --forwarded-allow-ips 127.0.0.1 --no-access-log --no-server-header
+Restart=on-failure
+RestartSec=5
+UMask=0077
+StateDirectory=mentor
+StateDirectoryMode=0700
+ReadWritePaths=/var/lib/mentor
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+CapabilityBoundingSet=
+AmbientCapabilities=
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallArchitectures=native
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

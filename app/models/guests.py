@@ -22,6 +22,7 @@ class Guest(Base):
     created_at: Mapped[dt.datetime] = mapped_column(default=now)
     last_seen_at: Mapped[dt.datetime | None]
     revoked_at: Mapped[dt.datetime | None]
+    expires_at: Mapped[dt.datetime | None]
 
 
 claim_installments = Table(

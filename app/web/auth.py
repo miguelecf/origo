@@ -5,8 +5,9 @@ from sqlalchemy.orm import Session
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.models import Guest
-from app.services import guests
+from app.models import Guest, User
+from app.services import security
+from app.web.security import COOKIE_NAME
 
 
 @dataclass
@@ -38,12 +39,13 @@ def _redirect(location: str) -> HTTPException:
 
 
 def get_viewer(request: Request, db: Session) -> Viewer | None:
-    if request.session.get("auth"):
+    identity = security.session_identity(db, request.cookies.get(COOKIE_NAME))
+    if isinstance(identity, User):
         return Viewer()
-    if guest := guests.active(db, request.session.get("guest_id")):
-        return Viewer(guest)
-    if not settings.APP_PASSWORD and not request.session.get("guest_id"):
-        return Viewer()  # sin contraseña: uso local, todo abierto
+    if isinstance(identity, Guest):
+        return Viewer(identity)
+    if settings.MENTOR_DEV_OPEN and not request.cookies.get(COOKIE_NAME):
+        return Viewer()  # Solo desarrollo local explícito; validado al arrancar.
     return None
 
 

@@ -5,15 +5,12 @@ from fastmcp import Client
 from app.main import app
 from app.mcp_server import mcp
 
-client = TestClient(app)
-
-
-def test_pages_render():
+def test_pages_render(client):
     for path in ["/", "/plata", "/deudas", "/cuerpo", "/super", "/super/compra", "/dia", "/invitados", "/login"]:
         assert client.get(path).status_code == 200, path
 
 
-def test_full_flow_through_forms():
+def test_full_flow_through_forms(client):
     assert client.post("/plata", data={"kind": "expense", "amount": "12.500", "category": "Súper"}).status_code == 200
     assert "12.500" in client.get("/plata").text
 
@@ -36,26 +33,23 @@ def test_full_flow_through_forms():
     assert page.status_code == 200 and "trip-state" in page.text
 
 
-def test_login_required_when_password_set(monkeypatch):
-    from app.core.config import settings
-
-    monkeypatch.setattr(settings, "APP_PASSWORD", "secreto")
-    fresh = TestClient(app)
+def test_login_required(anonymous_client, owner):
+    fresh = anonymous_client
     assert fresh.get("/", follow_redirects=False).headers["location"] == "/login"
-    fresh.post("/login", data={"password": "mal"})
+    fresh.post("/login", data={"username": owner.username, "password": "mal"})
     assert fresh.get("/", follow_redirects=False).status_code == 303
-    fresh.post("/login", data={"password": "secreto"})
+    fresh.post("/login", data={"username": owner.username, "password": "correct horse battery staple"})
     assert fresh.get("/").status_code == 200
 
 
-def test_guest_magic_link_permissions():
+def test_guest_magic_link_permissions(client):
     import re
 
     client.post("/deudas", data={"kind": "owed_to_me", "person": "Sofi", "total": "30000", "installments": "3"})
     page = client.post("/invitados", data={"name": "Sofi", "can_lists": "true", "can_debts": "true"}).text
     token = re.search(r"/g/([\w-]+)", page).group(1)
 
-    guest = TestClient(app)
+    guest = TestClient(client.app, base_url="http://localhost:8000", headers={"Origin": "http://localhost:8000"})
     assert guest.get(f"/g/{token}", follow_redirects=False).headers["location"] == "/super"
     # Lo mío no lo ve.
     for path in ["/", "/plata", "/cuerpo", "/dia", "/invitados"]:
@@ -80,12 +74,12 @@ def test_guest_magic_link_permissions():
     assert guest.get("/super/compra").status_code == 200
 
 
-def test_guest_without_debts_scope():
+def test_guest_without_debts_scope(client):
     import re
 
     page = client.post("/invitados", data={"name": "Vecino", "can_lists": "true"}).text
     token = re.search(r"/g/([\w-]+)", page).group(1)
-    guest = TestClient(app)
+    guest = TestClient(client.app, base_url="http://localhost:8000", headers={"Origin": "http://localhost:8000"})
     guest.get(f"/g/{token}")
     assert guest.get("/deudas", follow_redirects=False).headers["location"] == "/super"
     assert "ya no funciona" in guest.get("/g/token-falso").text

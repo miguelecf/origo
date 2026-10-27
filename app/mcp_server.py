@@ -10,7 +10,6 @@ from contextlib import contextmanager
 from decimal import Decimal
 
 from fastmcp import FastMCP
-from fastmcp.server.middleware import AuthMiddleware
 
 from app.core.clock import month_bounds, today
 from app.core.config import settings
@@ -25,27 +24,15 @@ Para analizar, empezá por get_overview y después bajá al detalle que necesite
 """
 
 
-def _auth():
-    if not settings.remote_mcp_enabled:
-        return None, []
-    from fastmcp.server.auth.providers.github import GitHubProvider
-
-    allowed = settings.GITHUB_ALLOWED_LOGIN.lower()
-    provider = GitHubProvider(
-        client_id=settings.GITHUB_CLIENT_ID,
-        client_secret=settings.GITHUB_CLIENT_SECRET,
-        base_url=settings.BASE_URL,
-        jwt_signing_key=settings.SECRET_KEY,
-    )
-    # Cualquiera con GitHub puede completar el OAuth; solo tu usuario ve y usa las tools.
-    only_me = AuthMiddleware(
-        auth=lambda ctx: ctx.token is not None and str(ctx.token.claims.get("login", "")).lower() == allowed
-    )
-    return provider, [only_me]
+mcp = FastMCP("Mentor", instructions=INSTRUCTIONS, mask_error_details=True)
 
 
-_provider, _middleware = _auth()
-mcp = FastMCP("Mentor", instructions=INSTRUCTIONS, auth=_provider, middleware=_middleware)
+def remote_http_app():
+    from app.services.mcp_auth import remote_auth
+
+    remote = FastMCP("Mentor", instructions=INSTRUCTIONS, auth=remote_auth(), mask_error_details=True)
+    remote.mount(mcp)
+    return remote.http_app(path="/mcp")
 
 
 @contextmanager

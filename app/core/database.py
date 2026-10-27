@@ -1,5 +1,7 @@
 from collections.abc import Iterator
 
+import os
+
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
@@ -21,8 +23,11 @@ def get_db() -> Iterator[Session]:
 def init_db(bind=engine) -> None:
     import app.models  # noqa: F401  registra las tablas
 
+    os.umask(0o077)
     Base.metadata.create_all(bind=bind)
     _add_missing_columns(bind)
+    if bind.url.database and bind.url.database != ":memory:" and os.path.isfile(bind.url.database):
+        os.chmod(bind.url.database, 0o600)
 
 
 def _add_missing_columns(bind) -> None:

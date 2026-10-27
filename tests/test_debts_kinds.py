@@ -1,24 +1,12 @@
-import datetime as dt
 from decimal import Decimal
 
 import pytest
-from fastapi.testclient import TestClient
 from fastmcp import Client
 from sqlalchemy import select
 
 from app.core.clock import today
-from app.core.database import get_db
-from app.main import app
 from app.models import Debt
 from app.services import debts, guests
-
-
-@pytest.fixture
-def client(db):
-    app.dependency_overrides[get_db] = lambda: db
-    with TestClient(app) as browser:
-        yield browser
-    app.dependency_overrides.pop(get_db, None)
 
 
 def create(db, **kwargs):
@@ -43,7 +31,7 @@ def test_card_and_entity_catalog_names(db):
     {"direction": "owed_to_me"}, {"kind": "entity", "brand": "uala", "direction": "owed_to_me"},
     {"first_due": None}, {"brand": None}, {"kind": "person"},
     {"kind": "entity", "brand": None, "person": " "}, {"installments": 0}, {"installments": None},
-    {"total": Decimal("0")}, {"total": Decimal("NaN")}, {"total": Decimal("Infinity")},
+    {"total": Decimal(0)}, {"total": Decimal("NaN")}, {"total": Decimal("Infinity")},
 ])
 def test_invalid_debts_do_not_persist(db, change):
     with pytest.raises(ValueError):
@@ -116,6 +104,7 @@ def test_form_validation(client, db):
 @pytest.mark.anyio
 async def test_mcp_exposes_kinds(db, monkeypatch):
     from contextlib import contextmanager
+
     from app import mcp_server
 
     @contextmanager

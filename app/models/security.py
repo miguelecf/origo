@@ -37,4 +37,4 @@ class LoginAttempt(Base):
     key: Mapped[str] = mapped_column(String(100), primary_key=True)
     failures: Mapped[int] = mapped_column(default=0)
     blocked_until: Mapped[dt.datetime | None]
-    updated_at: Mapped[dt.datetime] = mapped_column(default=now)
+    updated_at: Mapped[dt.datetime] = mapped_column(default=now, index=True)

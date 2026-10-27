@@ -90,6 +90,17 @@ def test_persistent_increasing_lockout(anonymous_client, owner, db):
     assert login(fresh).status_code == 429
 
 
+def test_valid_login_is_not_counted_as_failed_ip_attempt(anonymous_client, owner, db):
+    for _ in range(4):
+        assert login(anonymous_client, password="wrong").status_code == 401
+    assert login(anonymous_client).status_code == 303
+    ip_key = security.attempt_keys("testclient", "owner")[0]
+    row = db.get(LoginAttempt, ip_key)
+    assert row.failures == 4 and row.blocked_until is None
+    assert login(anonymous_client).status_code == 303
+    assert db.get(LoginAttempt, ip_key).failures == 4
+
+
 def test_rate_limits_per_ip_and_user(db, owner):
     for i in range(5):
         assert security.authenticate(db, "owner", "wrong", "", f"192.0.2.{i}") == (None, False)
@@ -102,7 +113,7 @@ def test_rate_limits_per_ip_and_user(db, owner):
 def test_totp_and_replay(anonymous_client, db, owner):
     secret = pyotp.random_base32()
     security.set_totp(db, owner, secret)
-    assert login(anonymous_client).status_code == 401
+    assert login(anonymous_client, code="💥💥💥").status_code == 401
     assert login(anonymous_client, code=pyotp.TOTP(secret).now()).status_code == 303
     assert login(anonymous_client, code=pyotp.TOTP(secret).now()).status_code == 401
     security.set_totp(db, owner, None)
@@ -168,6 +179,14 @@ def test_https_cookies_and_hsts(monkeypatch, db, owner):
 def test_reject_weak_production_secret(secret):
     with pytest.raises(ValueError, match="SECRET_KEY"):
         Settings(_env_file=None, BASE_URL="https://mentor.example.com", SECRET_KEY=secret)
+
+
+def test_app_does_not_start_with_weak_https_secret(monkeypatch):
+    from app.main import create_app
+    monkeypatch.setattr(settings, "BASE_URL", "https://mentor.example.com")
+    monkeypatch.setattr(settings, "SECRET_KEY", "dev-secret-change-me")
+    with pytest.raises(ValueError, match="SECRET_KEY"):
+        create_app()
 
 
 def test_dev_open_explicit_and_local_only(anonymous_client, monkeypatch):

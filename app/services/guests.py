@@ -1,12 +1,14 @@
 import datetime as dt
 import hashlib
 import secrets
+from zoneinfo import ZoneInfo
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session, selectinload
 
 from app.core.clock import now
 from app.core.logging import event
+from app.core.config import settings
 from app.models import Debt, Guest, Installment, PaymentClaim
 from app.services import debts
 
@@ -25,6 +27,8 @@ def create_guest(
         raise ValueError("Poné un nombre")
     if not (can_lists or can_debts):
         raise ValueError("Elegí al menos una cosa que pueda ver")
+    if expires_at is not None and expires_at.tzinfo is not None:
+        expires_at = expires_at.astimezone(ZoneInfo(settings.TIMEZONE)).replace(tzinfo=None)
     token = secrets.token_urlsafe(24)
     guest = Guest(
         name=name, person=(person.strip() or name), token_hash=_hash(token),

@@ -1,0 +1,19 @@
+[Unit]
+Description=Backup consistente de SQLite de Mentor
+
+[Service]
+Type=oneshot
+User=mentor
+Group=mentor
+ExecStart=/bin/sh /opt/mentor/deploy/backup.sh
+Environment=MENTOR_DATA_DIR=/var/lib/mentor
+Environment=BACKUP_RETENTION_DAYS=30
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ReadWritePaths=/var/lib/mentor
+CapabilityBoundingSet=
+RestrictAddressFamilies=AF_UNIX

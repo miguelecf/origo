@@ -79,6 +79,13 @@ def consume_attempt(db: Session, keys: list[str], limit: int = 5) -> bool:
     from sqlalchemy.dialects.sqlite import insert
 
     current = now()
+    # Limpiar los contadores cuyo bloqueo ya no puede estar activo.
+    db.execute(delete(LoginAttempt).where(LoginAttempt.updated_at < current - dt.timedelta(days=1)))
+    db.commit()
+    # No crear filas arbitrarias de usuario mientras la IP ya está bloqueada.
+    existing = db.get(LoginAttempt, keys[0], populate_existing=True)
+    if existing and existing.blocked_until and existing.blocked_until > current:
+        return False
     for key in keys:
         db.execute(insert(LoginAttempt).values(key=key, failures=0, updated_at=current).on_conflict_do_nothing())
     rows = [db.get(LoginAttempt, key, populate_existing=True) for key in keys]
@@ -96,11 +103,6 @@ def consume_attempt(db: Session, keys: list[str], limit: int = 5) -> bool:
     return True
 
 
-def clear_attempts(db: Session, keys: list[str]) -> None:
-    db.execute(delete(LoginAttempt).where(LoginAttempt.key.in_(keys)))
-    db.commit()
-
-
 def authenticate(db: Session, username: str, password: str, code: str, ip: str) -> tuple[User | None, bool]:
     keys = attempt_keys(ip, username)
     if not consume_attempt(db, keys):
@@ -114,6 +116,9 @@ def authenticate(db: Session, username: str, password: str, code: str, ip: str) 
     if not valid or not user or user.role != "owner":
         return None, False
     if user.totp_secret:
+        code = code.strip()
+        if not re.fullmatch(r"[0-9]{6}", code):
+            return None, False
         step = int(time.time()) // 30
         totp = pyotp.TOTP(user.totp_secret)
         accepted = next((s for s in (step - 1, step, step + 1) if secrets.compare_digest(totp.at(s * 30), code.strip())), None)
@@ -125,8 +130,14 @@ def authenticate(db: Session, username: str, password: str, code: str, ip: str) 
             return None, False
     if hasher.check_needs_rehash(user.password_hash):
         user.password_hash = hasher.hash(password)
-    # No limpiar la cuota por IP: un usuario válido no puede reiniciar el límite global.
-    clear_attempts(db, [keys[1]])
+    # No borrar la cuota por IP: solo descontar el login válido que no fue un fallo.
+    ip_attempt = db.get(LoginAttempt, keys[0], populate_existing=True)
+    if ip_attempt:
+        ip_attempt.failures = max(0, ip_attempt.failures - 1)
+        if ip_attempt.failures < 5:
+            ip_attempt.blocked_until = None
+    db.execute(delete(LoginAttempt).where(LoginAttempt.key == keys[1]))
+    db.commit()
     return user, False
 
 

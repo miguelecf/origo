@@ -63,7 +63,8 @@ class SecurityMiddleware:
                 if "content-security-policy" not in out:
                     out["Content-Security-Policy"] = (
                         "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval'; "
-                        "style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; "
+                        "style-src 'self' https://fonts.googleapis.com 'unsafe-inline'; img-src 'self' data:; "
+                        "font-src 'self' https://fonts.gstatic.com; "
                         "connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
                     )
                 out["X-Frame-Options"] = "DENY"

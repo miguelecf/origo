@@ -1,3 +1,5 @@
+import hashlib
+
 import pytest
 from fastapi.testclient import TestClient
 from fastmcp import Client
@@ -29,6 +31,14 @@ def test_remote_mcp_requires_bearer(monkeypatch):
         assert response.status_code == 200, response.text
 
 
+def test_static_token_compare_uses_fixed_size_hash(monkeypatch):
+    monkeypatch.setattr(settings, "MCP_TOKEN", TOKEN)
+    from app.services.mcp_auth import static_access
+    assert static_access(TOKEN)
+    assert not static_access(TOKEN + "wrong")
+    assert hashlib.sha256(TOKEN.encode()).digest_size == 32
+
+
 @pytest.mark.anyio
 async def test_mcp_tool_listing():
     async with Client(mcp) as client:
@@ -56,6 +66,11 @@ async def test_github_allowlist_at_http_verifier(monkeypatch):
     provider = object.__new__(OwnerGitHubProvider)
     assert await provider.verify_token("owner")
     assert await provider.verify_token("attacker") is None
+
+
+def test_mcp_token_must_have_at_least_32_bytes():
+    with pytest.raises(ValueError, match="MCP_TOKEN"):
+        type(settings)(_env_file=None, BASE_URL="http://localhost:8000", MCP_TOKEN="too-short")
 
 
 def test_partial_oauth_does_not_enable_remote(monkeypatch):

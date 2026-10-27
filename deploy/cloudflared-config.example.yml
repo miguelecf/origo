@@ -1,0 +1,11 @@
+# Reemplazá el UUID y el dominio por los de tu túnel.
+tunnel: REEMPLAZAR-UUID
+credentials-file: /etc/cloudflared/REEMPLAZAR-UUID.json
+loglevel: warn
+
+ingress:
+  - hostname: mentor.example.com
+    service: http://127.0.0.1:8000
+    originRequest:
+      httpHostHeader: mentor.example.com
+  - service: http_status:404

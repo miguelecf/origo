@@ -1,4 +1,5 @@
 """Autenticación HTTP separada de las tools y del transporte stdio local."""
+import hashlib
 import secrets
 
 from fastmcp.server.auth import AccessToken, TokenVerifier
@@ -8,7 +9,9 @@ from app.core.config import settings
 
 
 def static_access(token: str) -> AccessToken | None:
-    if settings.MCP_TOKEN and secrets.compare_digest(token.encode(), settings.MCP_TOKEN.encode()):
+    candidate_hash = hashlib.sha256(token.encode()).digest()
+    expected_hash = hashlib.sha256(settings.MCP_TOKEN.encode()).digest()
+    if settings.MCP_TOKEN and secrets.compare_digest(candidate_hash, expected_hash):
         return AccessToken(token=token, client_id="mentor-static", scopes=[], claims={"mentor_static": True})
     return None
 

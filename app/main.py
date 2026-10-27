@@ -23,7 +23,7 @@ def create_app() -> FastAPI:
 
     app = FastAPI(title=settings.APP_NAME, lifespan=mcp_app.lifespan if mcp_app else None,
                   docs_url=None, redoc_url=None, openapi_url=None, debug=False)
-    app.add_middleware(TrustedHostMiddleware, allowed_hosts=[urlsplit(settings.BASE_URL).hostname, "localhost", "127.0.0.1"], www_redirect=False)
+    app.add_middleware(TrustedHostMiddleware, allowed_hosts=[urlsplit(settings.BASE_URL).hostname, "localhost", "127.0.0.1", "::1"], www_redirect=False)
     app.add_middleware(SecurityMiddleware)
     app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
 

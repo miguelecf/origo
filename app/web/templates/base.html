@@ -37,6 +37,7 @@
   {% endif %}
   <nav class="tabbar" aria-label="Secciones">
     <div class="tabs">
+      <span class="nav-brand">{{ app_name }}</span>
     {% for href, label, icon in tabs %}
       <a href="{{ href }}" {% if active == href or (href != "/" and active.startswith(href)) %}aria-current="page"{% endif %}>
         <svg viewBox="0 0 24 24" aria-hidden="true">{{ icons[icon] | safe }}</svg>{{ label }}

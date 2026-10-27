@@ -156,10 +156,10 @@ div.marker { display: flex; flex-direction: column; gap: 0.6rem; }
 .cta { display: flex; justify-content: space-between; align-items: center; padding: 1rem 1.1rem; border-radius: var(--radius); background: var(--ink); color: var(--paper); text-decoration: none; font-weight: 650; }
 .cta span:last-child { font-weight: 400; opacity: 0.75; }
 
-.totals { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; }
+.totals { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 0.5rem 1rem; container-type: inline-size; }
 .totals.two { grid-template-columns: repeat(2, 1fr); }
 .totals > div { display: flex; flex-direction: column; min-width: 0; padding: 0.85rem; background: var(--sheet); border: 1px solid var(--rule); border-radius: var(--radius); }
-.totals strong { font-family: var(--rounded); font-size: clamp(0.875rem, 3.6vw, 1.375rem); font-weight: 700; }
+.totals strong { font-family: var(--rounded); font-size: clamp(0.875rem, 5.2cqi, 1.375rem); font-weight: 700; overflow-wrap: anywhere; }
 .card .totals > div { padding: 0; border: 0; }
 
 /* Barras de categoría */
@@ -336,6 +336,8 @@ p, small, .grow { overflow-wrap: anywhere; }
 .brand-grid label:has(input:checked) { border-color: var(--pen); background: color-mix(in srgb, var(--pen) 8%, var(--sheet)); box-shadow: inset 0 0 0 1px var(--pen); }
 .brand-grid label:has(input:focus-visible) { outline: 2px solid var(--pen); outline-offset: 2px; }
 
+.nav-brand { display: none; }
+
 /* Salir también está disponible cuando el invitado tiene una sola sección. */
 .tabbar .logout { flex: 1; display: flex; }
 .tabbar .logout button { width: 100%; flex-direction: column; gap: 0.1rem; padding: 0.35rem 0; min-height: 0; background: none; border: 0; color: var(--ink-soft); font-size: 0.72rem; font-weight: 550; }
@@ -356,8 +358,11 @@ p, small, .grow { overflow-wrap: anywhere; }
   main { max-width: 1132px; padding-top: 2rem; }
   .tabbar { inset: 0 0 auto 0; border-top: 0; border-bottom: 1px solid var(--rule); background: var(--sheet); padding: 0.65rem 1rem; }
   .tabbar .tabs { max-width: 1100px; gap: 0.5rem; }
-  .tabbar a, .tabbar .logout button { flex-direction: row; justify-content: center; gap: 0.5rem; font-size: 0.875rem; min-height: 2.5rem; }
-  .tabbar .logout { max-width: 100px; margin-left: auto; }
+  .tabbar .tabs { align-items: center; }
+  .tabbar .nav-brand { display: block; margin-right: 1.25rem; font-size: 1.1rem; font-weight: 700; letter-spacing: -0.01em; color: var(--ink); }
+  .tabbar a, .tabbar .logout button { flex: none; flex-direction: row; justify-content: center; gap: 0.5rem; padding: 0 0.85rem; font-size: 0.875rem; min-height: 2.5rem; }
+  .tabbar .logout { flex: none; margin-left: auto; }
+  .page-grid > .moves { grid-column: 2; grid-row: 2 / span 4; }
   .page-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 1.25rem; }
   .page-grid > .page-head, .page-grid > .cta { grid-column: 1 / -1; }
   .dashboard { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 1rem; }

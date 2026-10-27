@@ -1,5 +1,7 @@
 import ipaddress
 import time
+import traceback
+from pathlib import Path
 from urllib.parse import urlsplit
 
 from starlette.datastructures import Headers, MutableHeaders
@@ -86,8 +88,11 @@ class SecurityMiddleware:
                     event("csrf_rejected", ip=ip, method=scope["method"], path=redact_path(scope["path"]))
                     return await PlainTextResponse("Origen no permitido", status_code=403)(scope, receive, secure_send)
             await self.app(scope, receive, secure_send)
-        except Exception:
-            event("request_error", ip=ip, path=redact_path(scope["path"]))
+        except Exception as exc:
+            # Tipo y lugar alcanzan para diagnosticar; el mensaje puede traer datos y no se registra.
+            frame = traceback.extract_tb(exc.__traceback__)[-1]
+            event("request_error", ip=ip, path=redact_path(scope["path"]), error=type(exc).__name__,
+                  where=f"{Path(frame.filename).name}:{frame.lineno}")
             if not started:
                 await PlainTextResponse("Error interno del servidor", status_code=500)(scope, receive, secure_send)
         finally:

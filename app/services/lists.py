@@ -141,7 +141,7 @@ def _expense_for(trip: MarketTrip, db: Session) -> None:
     who = f" de {trip.guest.name}" if trip.guest else ""
     tx = new_transaction(
         kind="expense", amount=trip.total, category="Súper",
-        note=f"Compra{who} ({len(bought)} productos)", source="market",
+        note=f"Compra{who} ({len(bought)} producto{'s' if len(bought) != 1 else ''})", source="market",
     )
     db.add(tx)
     db.flush()

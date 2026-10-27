@@ -16,7 +16,7 @@
       <label><input type="radio" name="kind" value="income" x-model="kind"> Ingreso</label>
     </div>
     <div class="row">
-      <input name="amount" data-money inputmode="decimal" placeholder="Monto" required autocomplete="off" aria-label="Monto">
+      <input name="amount" data-money inputmode="decimal" placeholder="$ 0" required autocomplete="off" aria-label="Monto">
       <select name="category" x-show="kind === 'expense'" :disabled="kind !== 'expense'" aria-label="Categoría">
         {% for c in expense_categories %}<option>{{ c }}</option>{% endfor %}
       </select>
@@ -53,7 +53,7 @@
 </section>
 {% endif %}
 
-<section class="block card">
+<section class="block card moves">
   <h2>Movimientos</h2>
   <ul class="lines">
     {% for t in transactions %}

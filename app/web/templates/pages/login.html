@@ -10,7 +10,7 @@
     <form method="post" action="/login" hx-boost="false" class="stack">
       <input type="text" name="username" placeholder="Usuario" autofocus required autocomplete="username" maxlength="80" aria-label="Usuario">
       <input type="password" name="password" placeholder="Contraseña" required autocomplete="current-password" maxlength="1024" aria-label="Contraseña">
-      <input type="text" name="code" placeholder="Código del autenticador (si lo activaste)" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" aria-label="Código del autenticador">
+      <input type="text" name="code" placeholder="Código 2FA, si lo activaste" inputmode="numeric" autocomplete="one-time-code" pattern="[0-9]{6}" maxlength="6" aria-label="Código del autenticador">
       <button type="submit">Entrar</button>
     </form>
   {% endif %}

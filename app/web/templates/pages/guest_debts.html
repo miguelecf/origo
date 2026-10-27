@@ -46,7 +46,7 @@
       </ul>
     </div>
     {% endfor %}
-    <input name="message" placeholder="Un detalle, si querés. Ej. te transferí por Mercado Pago" autocomplete="off" aria-label="Mensaje">
+    <input name="message" placeholder="Detalle opcional. Ej. por Mercado Pago" autocomplete="off" aria-label="Mensaje">
     <button type="submit" :disabled="picked.length === 0"
             x-text="picked.length ? 'Avisarle que pagué ' + (picked.length === 1 ? 'esta cuota' : 'estas ' + picked.length + ' cuotas') : 'Marcá lo que pagaste'">Avisarle que pagué</button>
   </form>

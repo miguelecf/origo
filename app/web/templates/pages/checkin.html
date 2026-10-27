@@ -12,7 +12,7 @@
     <label class="grow">Horas de sueño
       <input name="sleep_hours" inputmode="decimal" value="{{ checkin.sleep_hours | number if checkin and checkin.sleep_hours is not none else '' }}" placeholder="7,5" autocomplete="off">
     </label>
-    <label class="grow">Minutos de movimiento
+    <label class="grow">Minutos activo
       <input name="movement_min" inputmode="numeric" value="{{ checkin.movement_min if checkin and checkin.movement_min is not none else '' }}" placeholder="Caminar, gym…" autocomplete="off">
     </label>
   </div>
@@ -25,7 +25,7 @@
     </div>
   </fieldset>
   <label>Una línea sobre el día
-    <input name="note" value="{{ checkin.note if checkin else '' }}" placeholder="Qué pasó, qué te molestó, qué salió bien" autocomplete="off">
+    <input name="note" value="{{ checkin.note if checkin else '' }}" placeholder="Qué pasó hoy" autocomplete="off">
   </label>
   <button type="submit">Guardar el día</button>
 </form>

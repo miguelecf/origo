@@ -79,6 +79,7 @@ def _installment(inst) -> dict:
 def _debt(debt) -> dict:
     return {
         "id": debt.id, "person": debt.person, "direction": debt.direction,
+        "kind": debt.kind, "brand": debt.brand,
         "description": debt.description, "total": _num(debt.total), "remaining": _num(debts.remaining(debt)),
         "card_loan_group": debt.group_id,
         "installments": [_installment(i) for i in debt.installments],
@@ -108,11 +109,16 @@ def get_overview(from_date: str | None = None, to_date: str | None = None) -> di
             },
             "debts": {
                 "owed_to_me": _num(d["owed_to_me"]), "i_owe": _num(d["i_owe"]),
+                "by_kind": {kind: {direction: _num(amount) for direction, amount in totals.items()}
+                            for kind, totals in d["by_kind"].items()},
                 "due_next_7_days": [
-                    {"person": i.debt.person, "direction": i.debt.direction, **_installment(i)} for i in d["due_soon"]
+                    {"person": i.debt.person, "direction": i.debt.direction,
+                     "kind": i.debt.kind, "brand": i.debt.brand, **_installment(i)} for i in d["due_soon"]
                 ],
                 "card_installments_not_yet_repaid": [
-                    {"person": a["person"], "card": a["card"], **_installment(a["installment"])}
+                    {"person": a["person"], "card": a["card"],
+                     "kind": a["installment"].debt.kind, "brand": a["installment"].debt.brand,
+                     **_installment(a["installment"])}
                     for a in d["card_alerts"]
                 ],
                 "payment_claims_waiting_my_confirmation": [
@@ -147,6 +153,7 @@ def list_transactions(from_date: str | None = None, to_date: str | None = None, 
 @mcp.tool
 def get_debts(include_settled: bool = False) -> list[dict]:
     """Deudas con sus cuotas. direction: owed_to_me (me deben) | i_owe (debo).
+    kind: person | card | entity; brand: marca del catálogo o null.
     Una tarjeta prestada son dos deudas con el mismo card_loan_group."""
     with _db() as db:
         return [_debt(d) for d in debts.list_debts(db, include_settled)]

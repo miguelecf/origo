@@ -72,7 +72,7 @@ def guest_debts(db: Session, guest: Guest) -> list[Debt]:
     """Las deudas entre el invitado y yo (sin el lado del banco de una tarjeta prestada)."""
     return list(db.scalars(
         select(Debt).options(selectinload(Debt.installments))
-        .where(func.lower(Debt.person) == guest.person.strip().lower())
+        .where(Debt.kind == "person", func.lower(Debt.person) == guest.person.strip().lower())
         .order_by(Debt.created_at.desc())
     ))
 

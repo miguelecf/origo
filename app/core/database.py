@@ -1,6 +1,6 @@
 from collections.abc import Iterator
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from app.core.config import settings
@@ -22,3 +22,20 @@ def init_db(bind=engine) -> None:
     import app.models  # noqa: F401  registra las tablas
 
     Base.metadata.create_all(bind=bind)
+    _add_missing_columns(bind)
+
+
+def _add_missing_columns(bind) -> None:
+    """Sin migraciones: create_all no toca tablas que ya existen, así que las columnas nuevas
+    se agregan acá. Solo sirve para columnas que admiten NULL o tienen server_default."""
+    existing = inspect(bind)
+    with bind.begin() as conn:
+        for table in Base.metadata.sorted_tables:
+            have = {c["name"] for c in existing.get_columns(table.name)}
+            for column in table.columns:
+                if column.name in have:
+                    continue
+                ddl = f"ALTER TABLE {table.name} ADD COLUMN {column.name} {column.type.compile(bind.dialect)}"
+                if column.server_default is not None:
+                    ddl += f" DEFAULT {column.server_default.arg!r}"
+                conn.execute(text(ddl))

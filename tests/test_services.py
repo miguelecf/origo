@@ -29,7 +29,9 @@ def test_card_loan_creates_both_sides_and_alerts(db):
     assert owed.direction == "owed_to_me" and owing.direction == "i_owe"
     assert owed.group_id == owing.group_id
     assert [i.due_date for i in owed.installments][:2] == [today(), add_months(today(), 1)]
-    assert debts.balances(db) == {"owed_to_me": Decimal(120000), "i_owe": Decimal(120000)}
+    balance = debts.balances(db)
+    assert balance["owed_to_me"] == balance["i_owe"] == Decimal(120000)
+    assert balance["by_kind"]["card"]["i_owe"] == Decimal(120000)
 
     alerts = debts.card_alerts(db, today() + dt.timedelta(days=7))
     assert len(alerts) == 1 and alerts[0]["person"] == "Juan"

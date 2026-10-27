@@ -1,92 +1,118 @@
 {% extends "base.html" %}
-{% macro debt_card(debt) %}
+{% macro debt_row(debt) %}
 {% set left = remaining(debt) %}
 {% set n = debt.installments | length %}
 {% set paid = debt.installments | selectattr("paid_on") | list | length %}
-<details class="debt" {% if left > 0 and n > 1 %}open{% endif %}>
+{% set due = next_due(debt) %}
+<details class="debt">
   <summary>
-    <span class="row wrap"><b>{{ debt.person }}</b>
-      {% if debt.group_id %}<span class="tag">tarjeta prestada</span>{% endif %}
-      {% if debt.description %}<small>{{ debt.description }}</small>{% endif %}</span>
-    <span class="num">{{ left | money }}{% if n > 1 %} <small>{{ paid }}/{{ n }}</small>{% endif %}</span>
+    {% if debt.brand %}<img class="avatar" src="/static/brands/{{ debt.brand }}.png" alt="" width="40" height="40">
+    {% else %}<span class="avatar initials" aria-hidden="true">{{ debt.person[:2] | upper }}</span>{% endif %}
+    <span class="grow stack-sm"><b>{{ debt.person }}</b><small>{% if not left %}Saldada{% elif due %}{{ 'Venció' if due < today else 'Vence' }} {{ due | short_date }}{% else %}Sin vencimiento{% endif %}</small></span>
+    <span class="debt-amount"><strong class="num">{{ left | money }}</strong><small>{{ paid }}/{{ n }}</small></span>
+    <span class="disclosure" aria-hidden="true">⌄</span>
   </summary>
-  <ul class="cuotas" id="debt-{{ debt.id }}">
-    {% for i in debt.installments %}
-    {% set late = not i.paid_on and i.due_date and i.due_date < today %}
-    <li class="{{ 'paid' if i.paid_on }} {{ 'late' if late }}">
-      <form method="post" action="/deudas/cuotas/{{ i.id }}" hx-target="#debt-{{ debt.id }}" hx-select="#debt-{{ debt.id }}" hx-swap="outerHTML">
-        <input type="hidden" name="paid" value="{{ 'false' if i.paid_on else 'true' }}">
-        <label>
-          <input type="checkbox" {% if i.paid_on %}checked{% endif %} onchange="this.form.requestSubmit()">
-          <span class="what num">{% if n > 1 %}Cuota {{ i.number }}: {% endif %}{{ i.amount | money }}</span>
-          {% if i.id in claimed %}<span class="tag marker-tag">avisó que pagó</span>{% endif %}
-          <span class="when">
-            {% if i.paid_on %}{{ 'cobrada' if debt.direction == 'owed_to_me' else 'pagada' }} {{ i.paid_on | short_date }}
-            {% elif i.due_date %}{{ 'venció' if late else 'vence' }} {{ i.due_date | short_date }}{% endif %}
-          </span>
-        </label>
-      </form>
-    </li>
-    {% endfor %}
-  </ul>
-  <form method="post" action="/deudas/{{ debt.id }}/borrar" class="row" style="justify-content: flex-end"
-        onsubmit="return confirm('{{ '¿Borrar esta tarjeta prestada? Se borran los dos lados.' if debt.group_id else '¿Borrar esta deuda?' }}')">
-    <button class="text danger">Borrar</button>
-  </form>
+  <div class="debt-body stack-sm">
+    {% if debt.description %}<p class="soft">{{ debt.description }}</p>{% endif %}
+    {% if debt.group_id %}<p><span class="tag">Tarjeta prestada</span></p>{% endif %}
+    <ul class="cuotas" id="debt-{{ debt.id }}">
+      {% for i in debt.installments %}
+      {% set late = not i.paid_on and i.due_date and i.due_date < today %}
+      <li class="{{ 'paid' if i.paid_on }} {{ 'late' if late }}">
+        <form method="post" action="/deudas/cuotas/{{ i.id }}">
+          <input type="hidden" name="paid" value="{{ 'false' if i.paid_on else 'true' }}">
+          <label>
+            <input type="checkbox" {% if i.paid_on %}checked{% endif %} onchange="this.form.requestSubmit()">
+            <span class="what num">Cuota {{ i.number }}: {{ i.amount | money }}</span>
+            {% if i.id in claimed %}<span class="tag marker-tag">Avisó que pagó</span>{% endif %}
+            <span class="when">{% if i.paid_on %}{{ 'Cobrada' if debt.direction == 'owed_to_me' else 'Pagada' }} {{ i.paid_on | short_date }}{% elif i.due_date %}{{ 'Venció' if late else 'Vence' }} {{ i.due_date | short_date }}{% endif %}</span>
+          </label>
+        </form>
+      </li>
+      {% endfor %}
+    </ul>
+    <form method="post" action="/deudas/{{ debt.id }}/borrar" class="row end" onsubmit="return confirm('{{ '¿Borrar esta tarjeta prestada? Se borran los dos lados.' if debt.group_id else '¿Borrar esta deuda?' }}')">
+      <button class="text danger">Borrar deuda</button>
+    </form>
+  </div>
 </details>
 {% endmacro %}
-
-{% block content %}
-<header class="page-head"><h1>Deudas</h1></header>
-
-<div class="stack">
-  {% include "partials/error.html" %}
-  {% for c in claims %}{% set back = "/deudas" %}{% include "partials/claim.html" %}{% endfor %}
-  {% for a in alerts %}
-  <p class="marker">{{ a.card }}: la cuota {{ a.installment.number }} de <span class="num">{{ a.installment.amount | money }}</span> ya venció y {{ a.person }} no te la pagó.</p>
+{% macro brand_picker(catalog, selected, disabled) %}
+<div class="brand-grid">
+  {% for slug, name in catalog.items() %}
+  <label><input type="radio" name="brand" value="{{ slug }}" x-model="{{ selected }}" :disabled="{{ disabled }}">
+    <img src="/static/brands/{{ slug }}.png" alt="" width="40" height="40"><span>{{ name }}</span>
+  </label>
   {% endfor %}
-
+  {% if selected == 'entityBrand' %}<label><input type="radio" name="brand" value="" x-model="entityBrand" :disabled="{{ disabled }}"><span class="avatar initials" aria-hidden="true">+</span><span>Otra</span></label>{% endif %}
+</div>
+{% endmacro %}
+{% block content %}
+<header class="page-head with-actions"><h1>Deudas</h1><a class="btn ghost small-btn" href="/invitados">Compartir con un link</a></header>
+<div class="stack">
   <div class="totals two">
     <div><small>Te deben</small><strong class="pos num">{{ balances.owed_to_me | money }}</strong></div>
     <div><small>Debés</small><strong class="neg num">{{ balances.i_owe | money }}</strong></div>
   </div>
-
-  <details class="sheet">
+  <nav class="segments" aria-label="Estado de las deudas">
+    <a href="/deudas" {% if not show_all %}aria-current="page"{% endif %}>Activas</a>
+    <a href="/deudas?todas=1" {% if show_all %}aria-current="page"{% endif %}>Saldadas</a>
+  </nav>
+  {% include "partials/error.html" %}
+  {% for c in claims %}{% set back = "/deudas" %}{% include "partials/claim.html" %}{% endfor %}
+  {% for a in alerts %}<p class="marker">{{ a.card }}: la cuota {{ a.installment.number }} de <span class="num">{{ a.installment.amount | money }}</span> vence {{ a.installment.due_date | short_date }} y {{ a.person }} no te la pagó.</p>{% endfor %}
+  <details class="sheet debt-form">
     <summary class="row between"><b>Anotar una deuda</b><span class="soft">+</span></summary>
-    <form method="post" action="/deudas" class="stack" x-data="{ kind: 'owed_to_me' }">
-      <div class="choice" role="radiogroup" aria-label="Tipo de deuda">
-        <label><input type="radio" name="kind" value="owed_to_me" x-model="kind" checked> Me deben</label>
-        <label><input type="radio" name="kind" value="i_owe" x-model="kind"> Debo</label>
-        <label><input type="radio" name="kind" value="card" x-model="kind"> Presté la tarjeta</label>
+    <form method="post" action="/deudas" class="stack" x-data="{ kind: 'person', direction: 'owed_to_me', cardBrand: 'visa', entityBrand: 'mercadopago' }">
+      <fieldset class="stack-sm">
+        <legend>¿Con quién?</legend>
+        <div class="choice">
+          <label><input type="radio" name="kind" value="person" x-model="kind" checked>Persona</label>
+          <label><input type="radio" name="kind" value="card" x-model="kind">Tarjeta</label>
+          <label><input type="radio" name="kind" value="entity" x-model="kind">Entidad</label>
+        </div>
+      </fieldset>
+      <div x-show="kind === 'person'" class="stack">
+        <label>Qué anotás
+          <select name="direction" x-model="direction" :disabled="kind !== 'person'">
+            <option value="owed_to_me">Me debe</option><option value="i_owe">Le debo</option><option value="card_loan">Le presté mi tarjeta</option>
+          </select>
+        </label>
       </div>
-      <input name="person" required autocomplete="off" list="people" :placeholder="kind === 'i_owe' ? '¿A quién le debés?' : '¿Quién te debe?'" aria-label="Persona">
-      <datalist id="people">{% for p in people %}<option value="{{ p }}">{% endfor %}</datalist>
-      <input name="card" x-show="kind === 'card'" x-cloak :required="kind === 'card'" placeholder="¿Qué tarjeta? Ej. Visa Galicia" autocomplete="off" aria-label="Tarjeta">
-      <div class="row">
-        <input name="total" inputmode="decimal" required placeholder="Monto total" autocomplete="off" aria-label="Monto total">
-        <input name="installments" inputmode="numeric" value="1" class="short" aria-label="Cantidad de cuotas">
-        <span class="soft">cuotas</span>
-      </div>
-      <label>Primer vencimiento <small x-text="kind === 'card' ? 'El del resumen de la tarjeta' : 'Opcional'"></small>
-        <input type="date" name="first_due" :required="kind === 'card'">
+      <input type="hidden" name="direction" value="i_owe" :disabled="kind === 'person'">
+      <fieldset x-show="kind === 'card' || (kind === 'person' && direction === 'card_loan')" x-cloak>
+        <legend>Marca de la tarjeta</legend>
+        {{ brand_picker(cards, 'cardBrand', "!(kind === 'card' || (kind === 'person' && direction === 'card_loan'))") }}
+      </fieldset>
+      <fieldset x-show="kind === 'entity'" x-cloak>
+        <legend>Elegí la entidad</legend>
+        {{ brand_picker(entities, 'entityBrand', "kind !== 'entity'") }}
+      </fieldset>
+      <label><span x-text="kind === 'person' ? 'Nombre de la persona' : kind === 'card' ? 'Nombre de la tarjeta' : 'Nombre de la entidad'"></span>
+        <input name="person" :required="kind === 'person' || (kind === 'entity' && !entityBrand)" autocomplete="off" list="people" :placeholder="kind === 'person' ? 'Ej. Ana' : kind === 'card' ? 'Ej. Visa Galicia (opcional)' : 'Opcional, salvo para Otra'">
       </label>
-      <input name="description" placeholder="¿Por qué? Ej. la heladera" autocomplete="off" aria-label="Descripción">
+      <datalist id="people">{% for p in people %}<option value="{{ p }}">{% endfor %}</datalist>
+      <label x-show="kind === 'person' && direction === 'card_loan'" x-cloak>Nombre de tu tarjeta
+        <input name="card" :disabled="!(kind === 'person' && direction === 'card_loan')" placeholder="Ej. Visa Galicia (opcional)" autocomplete="off">
+      </label>
+      <div class="row">
+        <label class="grow">Monto total<input name="total" data-money inputmode="decimal" required placeholder="$ 0" autocomplete="off"></label>
+        <label>Cuotas<input name="installments" type="number" min="1" step="1" value="1" class="short" required></label>
+      </div>
+      <label>Primer vencimiento <small x-text="kind === 'card' || (kind === 'person' && direction === 'card_loan') ? 'Obligatorio, según el resumen' : 'Opcional'"></small>
+        <input type="date" name="first_due" :required="kind === 'card' || (kind === 'person' && direction === 'card_loan')">
+      </label>
+      <label>Descripción<input name="description" placeholder="Ej. La heladera (opcional)" autocomplete="off"></label>
       <button type="submit">Guardar deuda</button>
     </form>
   </details>
 </div>
-
-<section class="block">
-  <h2>Te deben</h2>
-  <div>{% for d in owed_to_me %}{{ debt_card(d) }}{% else %}<p class="soft">Nadie te debe nada.</p>{% endfor %}</div>
-</section>
-<section class="block">
-  <h2>Debés</h2>
-  <div>{% for d in i_owe %}{{ debt_card(d) }}{% else %}<p class="soft">No le debés a nadie.</p>{% endfor %}</div>
-</section>
-
-<div class="block row wrap between">
-  <a href="/deudas{{ '' if show_all else '?todas=1' }}">{{ 'Ocultar las saldadas' if show_all else 'Ver también las saldadas' }}</a>
-  <a href="/invitados">Compartir con un link</a>
+<div class="debt-groups">
+  {% for group in groups %}
+  <section class="card debt-group">
+    <header class="row between"><h2>{{ group.title }}</h2><span class="num soft">{{ group.subtotal | money }}</span></header>
+    {% for debt in group.debts %}{{ debt_row(debt) }}{% else %}<p class="empty">{{ 'No hay deudas saldadas en este grupo.' if show_all else 'No hay deudas pendientes.' }}</p>{% endfor %}
+  </section>
+  {% endfor %}
 </div>
 {% endblock %}

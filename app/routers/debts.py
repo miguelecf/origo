@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 
 from app.core.clock import today
 from app.core.database import get_db
-from app.services import debts, guests
+from app.services import brands, debts, guests
 from app.web.auth import Viewer, require_owner, require_scope
 from app.web.forms import parse_amount, parse_date, parse_int
 from app.web.templates import render
@@ -31,8 +31,8 @@ def debts_page(
     all_debts = debts.list_debts(db, include_settled=todas)
     return render(
         request, "pages/debts.html",
-        owed_to_me=[d for d in all_debts if d.direction == "owed_to_me"],
-        i_owe=[d for d in all_debts if d.direction == "i_owe"],
+        groups=debts.debt_groups(db, settled=todas), next_due=debts.next_due,
+        cards=brands.CARDS, entities=brands.ENTITIES,
         balances=debts.balances(db), alerts=debts.card_alerts(db, today()),
         claims=guests.pending_claims(db), claimed=guests.claimed_installment_ids(db),
         claim_total=guests.claim_total, remaining=debts.remaining, show_all=todas, today=today(),
@@ -65,26 +65,20 @@ def resolve(claim_id: int, accept: bool = Form(...), reply: str = Form(""), back
 
 @router.post("", dependencies=owner_only)
 def add(
-    kind: str = Form(...), person: str = Form(...), total: str = Form(...),
+    kind: str = Form(...), person: str = Form(""), total: str = Form(...),
     installments: str = Form("1"), first_due: str = Form(""), card: str = Form(""),
+    direction: str | None = Form(None), brand: str | None = Form(None),
     description: str = Form(""), db: Session = Depends(get_db),
 ):
-    amount, parts, due = parse_amount(total), parse_int(installments) or 1, parse_date(first_due)
+    amount, parts, due = parse_amount(total), parse_int(installments), parse_date(first_due)
     try:
         if amount is None:
             raise ValueError("El monto no es un número")
-        if kind == "card":
-            if not card.strip() or due is None:
-                raise ValueError("Para una tarjeta prestada poné la tarjeta y el primer vencimiento")
-            debts.create_card_loan(
-                db, person=person, card=card, total=amount, installments=parts,
-                first_due=due, description=description,
-            )
-        else:
-            debts.create_debt(
-                db, person=person, direction=kind, total=amount, installments=parts,
-                first_due=due, description=description,
-            )
+        debts.create_from_form(
+            db, kind=kind, direction=direction, person=person, card=card, brand=brand,
+            total=amount, installments=parts if parts is not None else 1,
+            first_due=due, description=description,
+        )
     except ValueError as exc:
         return RedirectResponse(f"/deudas?error={exc}", status_code=303)
     return RedirectResponse("/deudas", status_code=303)

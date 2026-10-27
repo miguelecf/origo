@@ -12,7 +12,6 @@ from decimal import Decimal
 from fastmcp import FastMCP
 
 from app.core.clock import month_bounds, today
-from app.core.config import settings
 from app.core.database import SessionLocal, init_db
 from app.services import body, brands, checkins, debts, finance, guests, lists, overview
 

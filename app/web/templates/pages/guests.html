@@ -20,27 +20,31 @@
   </div>
   {% endif %}
 
-  <details class="sheet" {% if not guests %}open{% endif %}>
-    <summary class="row between"><b>Invitar a alguien</b><span class="soft">+</span></summary>
-    <form method="post" action="/invitados" class="stack">
-      <input name="name" required placeholder="Nombre. Ej. Ana" autocomplete="off" aria-label="Nombre">
-      <fieldset class="stack-sm" style="border: 0; padding: 0; margin: 0">
-        <legend class="soft" style="padding: 0 0 0.35rem">Qué puede ver</legend>
-        <label class="row" style="flex-direction: row"><input type="checkbox" name="can_lists" value="true" checked> Súper: lista de casa y compras</label>
-        <label class="row" style="flex-direction: row"><input type="checkbox" name="can_debts" value="true"> Deudas: solo las que tiene con vos</label>
+  <button type="button" class="btn ghost block-btn" data-dialog-open="guest-dialog">Invitar a alguien</button>
+  <dialog id="guest-dialog" class="form-sheet" aria-labelledby="guest-dialog-title">
+    <section class="sheet-panel">
+      <div class="dialog-handle" aria-hidden="true"></div>
+      <header class="sheet-heading"><h2 id="guest-dialog-title">Invitar a alguien</h2></header>
+      <form method="post" action="/invitados" class="stack">
+      <input name="name" required placeholder="Nombre. Ej. Ana" autocomplete="name" aria-label="Nombre">
+      <fieldset class="stack-sm">
+        <legend>Qué puede ver</legend>
+        <label class="switch-row"><span>Súper: lista de casa y compras</span><span class="switch"><input type="checkbox" name="can_lists" value="true" checked><span aria-hidden="true"></span></span></label>
+        <label class="switch-row"><span>Deudas: solo las que tiene con vos</span><span class="switch"><input type="checkbox" name="can_debts" value="true"><span aria-hidden="true"></span></span></label>
       </fieldset>
       <label>Cómo figura en Deudas <small>Si no lo completás, se usa el nombre</small>
         <input name="person" list="people" autocomplete="off">
       </label>
       <datalist id="people">{% for p in people %}<option value="{{ p }}">{% endfor %}</datalist>
-      <button type="submit">Crear link</button>
-    </form>
-  </details>
+      <div class="dialog-actions"><button type="button" class="ghost" data-dialog-close>Cancelar</button><button type="submit">Crear link</button></div>
+      </form>
+    </section>
+  </dialog>
 </div>
 
 <section class="block card">
   <h2>Con acceso</h2>
-  <ul class="lines">
+  <ul class="lines guest-list">
     {% for g in guests %}
     <li>
       <div class="grow">
@@ -50,7 +54,7 @@
       </div>
       <form method="post" action="/invitados/{{ g.id }}/link"><button class="text">{{ "Dar acceso" if g.revoked_at else "Link nuevo" }}</button></form>
       {% if not g.revoked_at %}
-      <form method="post" action="/invitados/{{ g.id }}/quitar" onsubmit="return confirm('¿Quitarle el acceso a {{ g.name }}? Su link deja de funcionar.')"><button class="text danger">Quitar</button></form>
+      <form method="post" action="/invitados/{{ g.id }}/quitar" data-confirm="¿Quitarle el acceso a {{ g.name }}? Su link deja de funcionar."><button class="text danger">Quitar</button></form>
       {% endif %}
     </li>
     {% else %}

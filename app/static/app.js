@@ -123,6 +123,10 @@ document.addEventListener("alpine:init", () => {
         this.changed();
       },
       remove(index) { this.items.splice(index, 1); this.changed(); },
+      confirmRemove(index) {
+        const item = this.items[index];
+        requestConfirmation(`¿Quitar ${item.name || "este producto"} de la compra?`, () => this.remove(index));
+      },
 
       changed() {
         this.persist(true);
@@ -164,13 +168,14 @@ document.addEventListener("alpine:init", () => {
       },
       async finish() {
         clearTimeout(this.timer);
-        if (!(await this.sync())) return alert("No hay señal. Probá de nuevo cuando vuelva.");
+        if (!(await this.sync())) return;
         const question = state.isOwner
           ? `¿Guardar ${money(this.total)} como gasto en Súper?`
           : `¿Terminar la compra de ${money(this.total)}?`;
-        if (!confirm(question)) return;
-        try { localStorage.removeItem(storageKey); } catch {}
-        this.$refs.close.submit();
+        requestConfirmation(question, () => {
+          try { localStorage.removeItem(storageKey); } catch {}
+          this.$refs.close.submit();
+        });
       },
     };
   });
@@ -203,4 +208,96 @@ function drawCharts(root) {
   });
 }
 document.addEventListener("DOMContentLoaded", () => drawCharts(document));
-document.addEventListener("htmx:load", (event) => drawCharts(event.target));
+document.addEventListener("htmx:load", (event) => {
+  drawCharts(event.target);
+  setupPageChrome();
+});
+
+let confirmationCallback = null;
+function requestConfirmation(message, callback) {
+  const dialog = document.getElementById("confirmation-dialog");
+  if (!dialog) return callback?.();
+  document.getElementById("confirmation-message").textContent = message;
+  confirmationCallback = callback;
+  dialog.showModal();
+}
+
+function setupPageChrome() {
+  const title = document.querySelector("#main-content .page-head h1");
+  const compactBar = document.getElementById("compact-bar");
+  const compactTitle = document.getElementById("compact-title");
+  if (title && compactBar && compactTitle && "IntersectionObserver" in window) {
+    compactTitle.textContent = title.textContent.trim().replace(/\s+/g, " ");
+    if (window.mentorTitleObserver) window.mentorTitleObserver.disconnect();
+    window.mentorTitleObserver = new IntersectionObserver(([entry]) => {
+      const shown = !entry.isIntersecting && entry.boundingClientRect.top < 0;
+      compactBar.classList.toggle("is-visible", shown);
+      compactBar.setAttribute("aria-hidden", String(!shown));
+    }, { threshold: 0, rootMargin: "-8px 0px 0px 0px" });
+    window.mentorTitleObserver.observe(title);
+  }
+
+  const hint = document.getElementById("install-hint");
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+  const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  let dismissed = false;
+  try { dismissed = localStorage.getItem("mentor-install-dismissed") === "1"; } catch {}
+  if (hint && ios && !standalone && !dismissed) hint.hidden = false;
+}
+
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch(() => {}));
+}
+
+document.addEventListener("click", (event) => {
+  const opener = event.target.closest("[data-dialog-open]");
+  if (opener) {
+    const dialog = document.getElementById(opener.dataset.dialogOpen);
+    if (dialog) {
+      dialog.showModal();
+      dialog.querySelector("input:not([type=hidden]), select, textarea")?.focus({ preventScroll: true });
+    }
+  }
+  if (event.target.closest("[data-dialog-close]")) event.target.closest("dialog")?.close();
+  if (event.target.closest("[data-confirm-cancel]")) {
+    document.getElementById("confirmation-dialog")?.close();
+    confirmationCallback = null;
+  }
+  if (event.target.closest("[data-confirm-accept]")) {
+    const callback = confirmationCallback;
+    confirmationCallback = null;
+    document.getElementById("confirmation-dialog")?.close();
+    callback?.();
+  }
+  if (event.target.closest("[data-install-dismiss]")) {
+    try { localStorage.setItem("mentor-install-dismissed", "1"); } catch {}
+    const hint = document.getElementById("install-hint");
+    if (hint) hint.hidden = true;
+  }
+  if (event.target.matches("dialog")) event.target.close();
+});
+
+document.addEventListener("submit", (event) => {
+  const form = event.target;
+  if (!form.matches("form[data-confirm]") || form.dataset.confirmed === "true") return;
+  event.preventDefault();
+  event.stopImmediatePropagation();
+  const submitter = event.submitter;
+  requestConfirmation(form.dataset.confirm, () => {
+    form.dataset.confirmed = "true";
+    form.requestSubmit(submitter || undefined);
+  });
+}, true);
+
+let touchStartY = null;
+document.addEventListener("touchstart", (event) => {
+  if (event.target.closest("dialog[open]")) touchStartY = event.touches[0]?.clientY ?? null;
+}, { passive: true });
+document.addEventListener("touchend", (event) => {
+  const dialog = event.target.closest("dialog[open]");
+  const endY = event.changedTouches[0]?.clientY;
+  if (dialog && touchStartY !== null && endY - touchStartY > 100) dialog.close();
+  touchStartY = null;
+}, { passive: true });
+
+document.addEventListener("DOMContentLoaded", setupPageChrome);

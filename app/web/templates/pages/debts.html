@@ -31,7 +31,7 @@
       </li>
       {% endfor %}
     </ul>
-    <form method="post" action="/deudas/{{ debt.id }}/borrar" class="row end" onsubmit="return confirm('{{ '¿Borrar esta tarjeta prestada? Se borran los dos lados.' if debt.group_id else '¿Borrar esta deuda?' }}')">
+    <form method="post" action="/deudas/{{ debt.id }}/borrar" class="row end" data-confirm="{{ '¿Borrar esta tarjeta prestada? Se borran los dos lados.' if debt.group_id else '¿Borrar esta deuda?' }}">
       <button class="text danger">Borrar deuda</button>
     </form>
   </div>
@@ -50,7 +50,7 @@
 {% block content %}
 <header class="page-head with-actions"><h1>Deudas</h1><a class="btn ghost small-btn" href="/invitados">Compartir con un link</a></header>
 <div class="stack">
-  <div class="totals two">
+  <div class="totals two" aria-live="polite" aria-atomic="true">
     <div><small>Te deben</small><strong class="pos num">{{ balances.owed_to_me | money }}</strong></div>
     <div><small>Debés</small><strong class="neg num">{{ balances.i_owe | money }}</strong></div>
   </div>
@@ -61,9 +61,12 @@
   {% include "partials/error.html" %}
   {% for c in claims %}{% set back = "/deudas" %}{% include "partials/claim.html" %}{% endfor %}
   {% for a in alerts %}<p class="marker">{{ a.card }}: la cuota {{ a.installment.number }} de <span class="num">{{ a.installment.amount | money }}</span> vence {{ a.installment.due_date | short_date }} y {{ a.person }} no te la pagó.</p>{% endfor %}
-  <details class="sheet debt-form">
-    <summary class="row between"><b>Anotar una deuda</b><span class="soft">+</span></summary>
-    <form method="post" action="/deudas" class="stack" x-data="{ kind: 'person', direction: 'owed_to_me', cardBrand: 'visa', entityBrand: 'mercadopago' }">
+  <button type="button" class="btn ghost block-btn" data-dialog-open="debt-dialog">Anotar una deuda</button>
+  <dialog id="debt-dialog" class="form-sheet debt-form" aria-labelledby="debt-dialog-title">
+    <section class="sheet-panel">
+      <div class="dialog-handle" aria-hidden="true"></div>
+      <header class="sheet-heading"><h2 id="debt-dialog-title">Anotar una deuda</h2></header>
+      <form method="post" action="/deudas" class="stack" x-data="{ kind: 'person', direction: 'owed_to_me', cardBrand: 'visa', entityBrand: 'mercadopago' }">
       <fieldset class="stack-sm">
         <legend>¿Con quién?</legend>
         <div class="choice">
@@ -104,9 +107,10 @@
         <input type="date" name="first_due" :required="kind === 'card' || (kind === 'person' && direction === 'card_loan')">
       </label>
       <label>Descripción<input name="description" placeholder="Ej. La heladera (opcional)" autocomplete="off"></label>
-      <button type="submit">Guardar deuda</button>
-    </form>
-  </details>
+        <div class="dialog-actions"><button type="button" class="ghost" data-dialog-close>Cancelar</button><button type="submit">Guardar deuda</button></div>
+      </form>
+    </section>
+  </dialog>
 </div>
 <div class="debt-groups">
   {% for group in groups %}

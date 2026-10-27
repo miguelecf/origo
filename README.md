@@ -99,10 +99,11 @@ localmente. Cambiar contraseña o TOTP invalida todas las sesiones de ese usuari
   HTMX o el guardado PUT del súper. MCP/OAuth usan sus propios controles y están excluidos.
 - `/docs`, `/redoc` y `/openapi.json` están deshabilitados. Se admite el host de `BASE_URL`,
   `localhost` y `127.0.0.1`. Los errores internos no exponen trazas.
-- CSP permite scripts propios y `cdn.jsdelivr.net`. Conserva **`unsafe-inline`** por los
-  scripts/handlers existentes y **`unsafe-eval`** por Alpine estándar; estilos inline
-  también siguen permitidos, junto con las hojas y fuentes de Google Fonts ya usadas por
-  la interfaz. Es una limitación explícita frente a XSS, no una CSP estricta.
+- CSP permite scripts solo del mismo origen. HTMX, Alpine y Chart.js se sirven desde
+  `app/static/vendor/`, sin CDN externo. Conserva **`unsafe-inline`** por los scripts y
+  handlers existentes y **`unsafe-eval`** por Alpine estándar; los estilos inline siguen
+  permitidos. La tipografía usa la pila del sistema, sin fuentes remotas. Es una limitación
+  explícita frente a XSS, no una CSP estricta.
   No se permite embeber la app, ni plugins; HTML no se cachea. HSTS se activa en HTTPS.
 - El registro propio emite JSON por evento, sin cuerpos, cookies ni autorización. Descarta
   todos los valores de query y reemplaza `/g/{token}` por `/g/***`. Las páginas de entrada

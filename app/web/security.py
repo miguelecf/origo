@@ -64,7 +64,7 @@ class SecurityMiddleware:
                 # Mantener la CSP más estricta del proveedor OAuth en sus propias páginas.
                 if "content-security-policy" not in out:
                     out["Content-Security-Policy"] = (
-                        "default-src 'self'; script-src 'self' https://cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval'; "
+                        "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; "
                         "style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
                         "font-src 'self'; "
                         "connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
@@ -75,8 +75,10 @@ class SecurityMiddleware:
                 out["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=(), usb=()"
                 if settings.BASE_URL.startswith("https://"):
                     out["Strict-Transport-Security"] = "max-age=31536000"
-                if "text/html" in out.get("content-type", "") or scope["path"].startswith(("/g/", "/login", "/logout")):
+                if "text/html" in out.get("content-type", "") or scope["path"].startswith(("/g/", "/login", "/logout", "/offline")):
                     out["Cache-Control"] = "no-store"
+                elif scope["path"].startswith("/static/") and b"v=" in scope.get("query_string", b""):
+                    out["Cache-Control"] = "public, max-age=31536000, immutable"
                 if scope["path"].startswith("/g/"):
                     out["Referrer-Policy"] = "no-referrer"
             await send(message)

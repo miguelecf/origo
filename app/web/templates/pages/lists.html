@@ -22,8 +22,8 @@
       <form method="post" action="/super/casa/{{ item.id }}/marcar" hx-target="#home-list" hx-select="#home-list" hx-swap="outerHTML" class="grow">
         <label><input type="checkbox" {% if item.done %}checked{% endif %} onchange="this.form.requestSubmit()"><span class="item">{{ item.name }}</span></label>
       </form>
-      <form method="post" action="/super/casa/{{ item.id }}/borrar" hx-target="#home-list" hx-select="#home-list" hx-swap="outerHTML">
-        <button class="x" aria-label="Quitar {{ item.name }}">×</button>
+      <form method="post" action="/super/casa/{{ item.id }}/borrar" hx-target="#home-list" hx-select="#home-list" hx-swap="outerHTML" data-confirm="¿Quitar {{ item.name }} de la lista de casa?">
+        <button class="x danger" aria-label="Quitar {{ item.name }}">×</button>
       </form>
     </li>
     {% else %}
@@ -39,7 +39,7 @@
        data-share-text="{{ whatsapp_text }}" onclick="return shareList(this)">Mandar la lista por WhatsApp</a>
     {% endif %}
     {% if items | selectattr("done") | list %}
-    <form method="post" action="/super/casa/limpiar"><button class="ghost">Borrar tachados</button></form>
+    <form method="post" action="/super/casa/limpiar" data-confirm="¿Borrar todos los productos tachados?"><button class="ghost destructive">Borrar tachados</button></form>
     {% endif %}
   </div>
   {% endif %}

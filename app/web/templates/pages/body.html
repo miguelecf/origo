@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% block page_scripts %}<script src="/static/vendor/chart-4.4.7.umd.min.js?v=4.4.7"></script>{% endblock %}
 {% block layout %}page-grid{% endblock %}
 {% block content %}
 <header class="page-head"><h1>Cuerpo</h1></header>
@@ -18,7 +19,7 @@
       <li>
         <small class="num">{{ e.at.strftime('%H:%M') }}</small>
         <span class="grow">{{ e.text }}</span>
-        <form method="post" action="/cuerpo/comida/{{ e.id }}/borrar"><button class="x" aria-label="Borrar comida">×</button></form>
+        <form method="post" action="/cuerpo/comida/{{ e.id }}/borrar" data-confirm="¿Borrar esta comida?"><button class="x danger" aria-label="Borrar comida">×</button></form>
       </li>
       {% endfor %}
     </ul>
@@ -40,7 +41,7 @@
     <div><small>Meta</small><b class="num">{{ w.goal | number if w.goal else "—" }}</b>
       {% if w.goal %}<small>faltan {{ (w.current.kg - w.goal) | abs | number }} kg</small>{% endif %}</div>
   </div>
-  <canvas data-chart="weight" data-values='{{ chart | tojson }}' data-goal="{{ w.goal or '' }}" height="190" aria-label="Gráfico de peso"></canvas>
+  <canvas data-chart="weight" data-values='{{ chart | tojson }}' data-goal="{{ w.goal or '' }}" height="190" role="img" aria-label="Gráfico de peso"></canvas>
   {% endif %}
 
   <form method="post" action="/cuerpo/peso" class="row">
@@ -49,23 +50,29 @@
     <button type="submit">Guardar</button>
   </form>
 
-  <details class="fold">
-    <summary>Meta e historial</summary>
-    <div class="stack">
-      <form method="post" action="/cuerpo/meta" class="row">
-        <input name="kg" inputmode="decimal" placeholder="Meta en kg. Vacío la quita" value="{{ summary.goal | number if summary.goal else '' }}" autocomplete="off" aria-label="Meta en kg">
-        <button type="submit" class="ghost">Guardar meta</button>
+  <button type="button" class="btn ghost" data-dialog-open="weight-goal-dialog">{{ 'Cambiar meta de peso' if summary.goal else 'Anotar una meta de peso' }}</button>
+  <dialog id="weight-goal-dialog" class="form-sheet" aria-labelledby="weight-goal-title">
+    <section class="sheet-panel">
+      <div class="dialog-handle" aria-hidden="true"></div>
+      <header class="sheet-heading"><h2 id="weight-goal-title">Meta de peso</h2></header>
+      <form method="post" action="/cuerpo/meta" class="stack">
+        <label>Meta en kg<input name="kg" inputmode="decimal" enterkeyhint="done" placeholder="Vacío la quita" value="{{ summary.goal | number if summary.goal else '' }}" autocomplete="off" aria-label="Meta en kg"></label>
+        <div class="dialog-actions"><button type="button" class="ghost" data-dialog-close>Cancelar</button><button type="submit">Guardar meta</button></div>
       </form>
-      <ul class="lines tight">
-        {% for weight in series %}
-        <li>
-          <span class="grow">{{ weight.date.strftime('%d/%m/%Y') }}</span>
-          <strong class="num">{{ weight.kg | number }} kg</strong>
-          <form method="post" action="/cuerpo/peso/{{ weight.id }}/borrar"><button class="x" aria-label="Borrar peso">×</button></form>
-        </li>
-        {% endfor %}
-      </ul>
-    </div>
+    </section>
+  </dialog>
+
+  <details class="fold">
+    <summary>Historial</summary>
+    <ul class="lines tight">
+      {% for weight in series %}
+      <li>
+        <span class="grow">{{ weight.date.strftime('%d/%m/%Y') }}</span>
+        <strong class="num">{{ weight.kg | number }} kg</strong>
+        <form method="post" action="/cuerpo/peso/{{ weight.id }}/borrar" data-confirm="¿Borrar este registro de peso?"><button class="x danger" aria-label="Borrar peso">×</button></form>
+      </li>
+      {% endfor %}
+    </ul>
   </details>
 </section>
 {% endblock %}

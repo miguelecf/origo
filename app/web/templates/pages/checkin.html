@@ -48,6 +48,7 @@
     {% for c in recent %}
     <li>
       <a href="/dia?fecha={{ c.date.isoformat() }}" class="grow">{{ c.date | short_date | capitalize }}</a>
+      <span class="chevron" aria-hidden="true">›</span>
       <span class="num">{{ c.sleep_hours | number }} h</span>
       <span aria-label="Ánimo {{ c.mood or 'sin dato' }}">{{ ["", "😞", "😕", "😐", "🙂", "😄"][c.mood] if c.mood else "—" }}</span>
       <span class="num soft">{{ c.movement_min if c.movement_min is not none else "—" }} min</span>

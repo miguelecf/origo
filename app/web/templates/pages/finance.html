@@ -34,7 +34,7 @@
 
 <section class="block card">
   <h2>Resumen del mes</h2>
-  <div class="totals">
+  <div class="totals" aria-live="polite" aria-atomic="true">
     <div><small>Entró</small><strong class="pos num">{{ summary.income | money }}</strong></div>
     <div><small>Salió</small><strong class="neg num">{{ summary.expense | money }}</strong></div>
     <div><small>Quedó</small><strong class="num {{ 'neg' if summary.balance < 0 }}">{{ summary.balance | money }}</strong></div>
@@ -63,9 +63,9 @@
         <small>{{ t.date | short_date | capitalize }}{% if t.note %}, {{ t.note }}{% endif %}</small>
       </div>
       <strong class="num {{ 'pos' if t.kind == 'income' else '' }}">{{ '+' if t.kind == 'income' else '−' }}{{ t.amount | money }}</strong>
-      <form method="post" action="/plata/{{ t.id }}/borrar" onsubmit="return confirm('¿Borrar este movimiento?')">
+      <form method="post" action="/plata/{{ t.id }}/borrar" data-confirm="¿Borrar este movimiento? Esta acción no se puede deshacer.">
         <input type="hidden" name="mes" value="{{ month.strftime('%Y-%m') }}">
-        <button class="x" aria-label="Borrar movimiento">×</button>
+        <button class="x danger" aria-label="Borrar movimiento">×</button>
       </form>
     </li>
     {% else %}

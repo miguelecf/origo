@@ -3,6 +3,7 @@
 {% block layout %}market-layout{% endblock %}
 {% block content %}
 <script type="application/json" id="trip-state">{{ state | tojson }}</script>
+<header class="page-head"><h1>Compra</h1></header>
 <div x-data="market('trip-state')" hx-boost="false">
   <div class="till">
     <div class="till-total">
@@ -44,7 +45,7 @@
           <span class="name"><span x-text="item.name || 'Sin nombre'" :class="{ 'soft': !item.name }"></span>
             <em x-show="qtyOf(item) !== 1" x-text="' ×' + fmtQty(item)"></em></span>
           <span class="sub" x-text="priceOf(item) ? money(subtotal(item)) : 'sin precio'"></span>
-          <button class="x" @click="remove(index)" :aria-label="'Quitar ' + (item.name || 'producto')">×</button>
+          <button class="x danger" @click="confirmRemove(index)" :aria-label="'Quitar ' + (item.name || 'producto')">×</button>
           <span class="edit">
             <input class="q" x-model="item.qty" @input="changed()" inputmode="decimal" aria-label="Cantidad">
             <span>×</span>
@@ -63,8 +64,8 @@
     <button class="block-btn" @click="finish()" :disabled="total <= 0">
       {{ "Terminar y guardar el gasto" if viewer.is_owner else "Terminar la compra" }}
     </button>
-    <form method="post" action="/super/compra/{{ trip.id }}/descartar" hx-boost="false" onsubmit="return confirm('¿Tirar esta compra? Se pierde lo anotado.')">
-      <button class="ghost block-btn">Tirar esta compra</button>
+    <form method="post" action="/super/compra/{{ trip.id }}/descartar" hx-boost="false" data-confirm="¿Tirar esta compra? Se pierde lo anotado.">
+      <button class="ghost destructive block-btn">Tirar esta compra</button>
     </form>
   </div>
   <form method="post" action="/super/compra/{{ trip.id }}/cerrar" hx-boost="false" x-ref="close"></form>

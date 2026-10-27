@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     GITHUB_CLIENT_SECRET: str = ""
     GITHUB_ALLOWED_LOGIN: str = ""
     MCP_TOKEN: str = ""
+    MCP_LOCAL_ONLY: bool = False
     LOG_LEVEL: str = "INFO"
     LOG_FILE: str = ""
 

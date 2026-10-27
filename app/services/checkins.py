@@ -26,6 +26,17 @@ def save_checkin(
     return checkin
 
 
+def update_checkin(db: Session, day: dt.date, **fields) -> Checkin:
+    """Como save_checkin, pero lo que viene en None conserva el valor que ya había."""
+    current = get_checkin(db, day)
+    merged = {
+        key: fields.get(key) if fields.get(key) is not None else (getattr(current, key) if current else None)
+        for key in ("sleep_hours", "mood", "movement_min", "note")
+    }
+    merged["note"] = merged["note"] or ""
+    return save_checkin(db, day, **merged)
+
+
 def list_checkins(db: Session, start: dt.date, end: dt.date) -> list[Checkin]:
     return list(db.scalars(
         select(Checkin).where(Checkin.date >= start, Checkin.date < end).order_by(Checkin.date)

@@ -18,6 +18,16 @@ def bearer_path(path: str) -> bool:
     return path in OAUTH_PATHS or path == "/mcp" or path.startswith("/mcp/") or path.startswith("/.well-known/")
 
 
+PROXY_HEADERS = ("cf-connecting-ip", "cf-ray", "x-forwarded-for", "forwarded")
+
+
+def from_this_machine(scope) -> bool:
+    """Llamada directa desde el mismo servidor: peer de loopback y sin pasar por el túnel ni un proxy."""
+    peer = (scope.get("client") or ("", 0))[0]
+    headers = Headers(scope=scope)
+    return peer in {"127.0.0.1", "::1"} and not any(h in headers for h in PROXY_HEADERS)
+
+
 def client_ip(scope) -> str:
     peer = (scope.get("client") or ("unknown", 0))[0]
     if peer == "127.0.0.1":
@@ -84,6 +94,9 @@ class SecurityMiddleware:
             await send(message)
 
         try:
+            if settings.MCP_LOCAL_ONLY and bearer_path(scope["path"]) and not from_this_machine(scope):
+                event("mcp_remote_blocked", ip=ip, path=redact_path(scope["path"]))
+                return await PlainTextResponse("No encontrado", status_code=404)(scope, receive, secure_send)
             if scope["method"] not in {"GET", "HEAD", "OPTIONS"} and not bearer_path(scope["path"]):
                 supplied = headers.get("origin") if "origin" in headers else headers.get("referer", "")
                 if headers.get("sec-fetch-site", "").lower() == "cross-site" or origin(supplied) != origin(settings.BASE_URL):

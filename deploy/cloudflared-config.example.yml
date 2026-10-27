@@ -4,6 +4,11 @@ credentials-file: /etc/cloudflared/REEMPLAZAR-UUID.json
 loglevel: warn
 
 ingress:
+  # MCP y OAuth no salen a internet: Hermes usa /mcp por 127.0.0.1. Sacá esta regla solo si
+  # querés conectar Claude.ai u otro cliente remoto.
+  - hostname: mentor.example.com
+    path: ^/(mcp|\.well-known|authorize|token|register|revoke|consent|auth/callback)(/.*)?$
+    service: http_status:404
   - hostname: mentor.example.com
     service: http://127.0.0.1:8000
     originRequest:

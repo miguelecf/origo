@@ -1,0 +1,50 @@
+# Fragmento para ~/.hermes/config.yaml del usuario que corre Hermes en el server de casa.
+# Mezclalo con lo que ya tengas y protegé el archivo: chmod 600 ~/.hermes/config.yaml
+
+mcp_servers:
+  mentor:
+    # Mentor y Hermes en la misma máquina: la llamada nunca sale de 127.0.0.1.
+    # En Mentor: MCP_TOKEN=<token> y MCP_LOCAL_ONLY=1 (ver README, sección Hermes).
+    url: "http://127.0.0.1:8000/mcp"
+    headers:
+      Authorization: "Bearer PEGAR_ACA_EL_MCP_TOKEN"
+    timeout: 30
+    tools:
+      # Lista cerrada: si Mentor suma tools nuevas, Hermes no las ve hasta que las agregues acá.
+      include:
+        - get_overview
+        - list_transactions
+        - get_debts
+        - get_due_payments
+        - get_weight_series
+        - get_food_log
+        - get_checkins
+        - get_market_trips
+        - get_price_history
+        - get_home_list
+        - add_transaction
+        - add_debt
+        - lend_card
+        - set_installment_paid
+        - resolve_payment_claim
+        - save_checkin
+        - log_food
+        - log_weight
+        - set_weight_goal
+        - add_to_home_list
+        - toggle_home_item
+        # Para que no pueda borrar nada, sacá esta línea.
+        - delete_transaction
+
+skills:
+  external_dirs:
+    # El skill vive en el repo, así se actualiza con cada git pull.
+    - /opt/mentor/hermes/skills
+
+gateway:
+  platforms:
+    telegram:
+      extra:
+        # Tu ID numérico de Telegram (te lo da @userinfobot), no tu @usuario.
+        allow_from:
+          - "PEGAR_ACA_TU_ID_DE_TELEGRAM"

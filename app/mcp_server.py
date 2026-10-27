@@ -14,13 +14,15 @@ from fastmcp import FastMCP
 from app.core.clock import month_bounds, today
 from app.core.config import settings
 from app.core.database import SessionLocal, init_db
-from app.services import body, checkins, debts, finance, guests, lists, overview
+from app.services import body, brands, checkins, debts, finance, guests, lists, overview
 
 INSTRUCTIONS = """\
 Registro personal de la vida de una persona: plata, deudas, peso, comidas, sueño, ánimo,
 movimiento y compras. Montos en la moneda local, fechas en formato ISO (YYYY-MM-DD).
 Los rangos son [from_date, to_date): incluye el inicio y excluye el final.
 Para analizar, empezá por get_overview y después bajá al detalle que necesites.
+Las tools de escritura guardan de verdad: confirmá montos y fechas antes de llamarlas, y para
+borrar algo pedí siempre confirmación explícita.
 """
 
 
@@ -73,6 +75,14 @@ def _debt(debt) -> dict:
     }
 
 
+def _date(value: str | None) -> dt.date | None:
+    return dt.date.fromisoformat(value) if value else None
+
+
+def _catalog(kind: str) -> str:
+    return ", ".join(f"{slug} ({name})" for slug, name in brands.CATALOGS[kind].items())
+
+
 def _weight(w) -> dict | None:
     return {"date": w.date.isoformat(), "kg": _num(w.kg)} if w else None
 
@@ -109,7 +119,7 @@ def get_overview(from_date: str | None = None, to_date: str | None = None) -> di
                     for a in d["card_alerts"]
                 ],
                 "payment_claims_waiting_my_confirmation": [
-                    {"guest": c.guest.name, "message": c.message, "amount": _num(guests.claim_total(c)),
+                    {"claim_id": c.id, "guest": c.guest.name, "message": c.message, "amount": _num(guests.claim_total(c)),
                      "installments": [_installment(i) for i in c.installments]}
                     for c in d["pending_claims"]
                 ],
@@ -238,6 +248,118 @@ def add_to_home_list(items: str) -> list[str]:
     """Agrega cosas a la lista de compras de la casa. Varias separadas por coma."""
     with _db() as db:
         return [i.name for i in lists.add_home_items(db, items)]
+
+
+@mcp.tool
+def get_home_list() -> list[dict]:
+    """Lista de compras de la casa: pendientes primero, después las tachadas."""
+    with _db() as db:
+        return [{"id": i.id, "name": i.name, "done": i.done} for i in lists.home_items(db)]
+
+
+@mcp.tool
+def toggle_home_item(item_id: int) -> dict:
+    """Tacha un producto de la lista de casa (o lo destacha si ya estaba tachado)."""
+    with _db() as db:
+        lists.toggle_home_item(db, item_id)
+        return {"items": [{"id": i.id, "name": i.name, "done": i.done} for i in lists.home_items(db)]}
+
+
+@mcp.tool
+def get_due_payments(days: int = 7) -> list[dict]:
+    """Cuotas sin pagar que vencen en los próximos `days` días, incluidas las atrasadas.
+    Sirve para avisos de pago: direction i_owe es lo que pago yo, owed_to_me lo que me tienen que pagar."""
+    with _db() as db:
+        return [
+            {"debt_id": i.debt.id, "person": i.debt.person, "direction": i.debt.direction,
+             "kind": i.debt.kind, "brand": i.debt.brand, "overdue": i.due_date < today(), **_installment(i)}
+            for i in debts.due_until(db, today() + dt.timedelta(days=max(0, min(days, 366))))
+        ]
+
+
+@mcp.tool(description=(
+    "Anota una deuda en cuotas iguales. direction: owed_to_me (me deben) | i_owe (debo). "
+    "kind: person | card | entity. Tarjetas y entidades siempre son i_owe. "
+    "Una tarjeta necesita brand y first_due. Si person queda vacío, se usa el nombre de la marca. "
+    f"Marcas de tarjeta: {_catalog('card')}. Entidades: {_catalog('entity')}. "
+    "Para una entidad que no está en la lista, brand vacío y person con el nombre."
+))
+def add_debt(
+    person: str, direction: str, total: float, installments: int = 1, first_due: str | None = None,
+    description: str = "", kind: str = "person", brand: str | None = None,
+) -> dict:
+    with _db() as db:
+        debt = debts.create_debt(
+            db, person=person, direction=direction, total=Decimal(str(total)), installments=installments,
+            first_due=_date(first_due), description=description, kind=kind, brand=brand,
+        )
+        return _debt(debt)
+
+
+@mcp.tool(description=(
+    "Tarjeta prestada: la persona me debe las cuotas y yo se las debo a la tarjeta. Crea las dos "
+    f"deudas enlazadas. card es el nombre de la tarjeta (ej. 'Visa Galicia'); brand: {_catalog('card')}."
+))
+def lend_card(
+    person: str, card: str, total: float, installments: int, first_due: str,
+    description: str = "", brand: str | None = None,
+) -> list[dict]:
+    with _db() as db:
+        pair = debts.create_card_loan(
+            db, person=person, card=card, total=Decimal(str(total)), installments=installments,
+            first_due=dt.date.fromisoformat(first_due), description=description, brand=brand,
+        )
+        return [_debt(d) for d in pair]
+
+
+@mcp.tool
+def set_installment_paid(installment_id: int, paid: bool = True, date: str | None = None) -> dict:
+    """Marca una cuota como pagada (o la desmarca). Al pagarla se registra sola en Plata:
+    ingreso si me la pagaron, gasto si la pagué yo. Los id de cuota salen de get_debts o get_due_payments."""
+    with _db() as db:
+        return _installment(debts.set_installment_paid(db, installment_id, paid, _date(date)))
+
+
+@mcp.tool
+def resolve_payment_claim(claim_id: int, accept: bool, reply: str = "") -> dict:
+    """Confirma o rechaza un aviso de pago de un invitado (claim_id sale de get_overview).
+    Confirmar marca sus cuotas como cobradas."""
+    with _db() as db:
+        claim = guests.resolve_claim(db, claim_id, accept, reply)
+        return {"claim_id": claim.id, "status": claim.status}
+
+
+@mcp.tool
+def save_checkin(
+    date: str | None = None, sleep_hours: float | None = None, mood: int | None = None,
+    movement_min: int | None = None, note: str | None = None,
+) -> dict:
+    """Check-in del día (por defecto hoy): horas de sueño, ánimo 1-5, minutos de movimiento y una nota.
+    Lo que no mandes conserva el valor que ya tenía ese día."""
+    with _db() as db:
+        c = checkins.update_checkin(
+            db, _date(date) or today(), sleep_hours=Decimal(str(sleep_hours)) if sleep_hours is not None else None,
+            mood=mood, movement_min=movement_min, note=note,
+        )
+        return {"date": c.date.isoformat(), "sleep_hours": _num(c.sleep_hours), "mood": c.mood,
+                "movement_min": c.movement_min, "note": c.note}
+
+
+@mcp.tool
+def set_weight_goal(kg: float | None = None) -> dict:
+    """Fija la meta de peso en kg. Sin valor, la quita."""
+    with _db() as db:
+        body.set_goal(db, Decimal(str(kg)) if kg is not None else None)
+        return {"goal_kg": _num(body.get_goal(db))}
+
+
+@mcp.tool
+def delete_transaction(transaction_id: int) -> dict:
+    """Borra un ingreso o gasto mal cargado (id de list_transactions). Si era el pago de una cuota,
+    la cuota vuelve a quedar pendiente. Solo con confirmación explícita del dueño."""
+    with _db() as db:
+        finance.delete_transaction(db, transaction_id)
+        return {"deleted": transaction_id}
 
 
 @mcp.prompt

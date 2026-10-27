@@ -55,10 +55,7 @@ def magic_link(request: Request, token: str, db: Session = Depends(get_db)):
         return render(request, "pages/login.html", error=None, owner_with_link=True)
     guest = guests.by_token(db, token)
     if guest is None:
-        security.revoke_session(db, request.cookies.get(COOKIE_NAME))
-        response = render(request, "pages/login.html", error="Ese link ya no funciona. Pedile uno nuevo a " + settings.OWNER_NAME + ".")
-        response.delete_cookie(COOKIE_NAME)
-        return response
+        return render(request, "pages/login.html", error="Ese link ya no funciona. Pedile uno nuevo a " + settings.OWNER_NAME + ".")
     session_token = security.new_session(db, previous=request.cookies.get(COOKIE_NAME), guest=guest)
     response = RedirectResponse(Viewer(guest).home, status_code=303)
     set_session_cookie(response, session_token)

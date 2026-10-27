@@ -21,13 +21,18 @@ def home_items(db: Session) -> list[HomeItem]:
     return list(db.scalars(select(HomeItem).order_by(HomeItem.done, HomeItem.created_at)))
 
 
+MAX_HOME_ITEMS = 300
+MAX_TRIP_ITEMS = 400
+
+
 def add_home_items(db: Session, text: str) -> list[HomeItem]:
     """Acepta varios de una: 'leche, pan' o uno por renglón. No duplica pendientes."""
     pending = {normalize(i.name) for i in db.scalars(select(HomeItem).where(HomeItem.done.is_(False)))}
+    room = MAX_HOME_ITEMS - (db.scalar(select(func.count(HomeItem.id))) or 0)
     added = []
-    for name in re.split(r"[,\n]", text):
-        name = re.sub(r"\s+", " ", name).strip()
-        if name and normalize(name) not in pending:
+    for name in re.split(r"[,\n]", text[:5000]):
+        name = re.sub(r"\s+", " ", name).strip()[:80]
+        if name and normalize(name) not in pending and len(added) < room:
             pending.add(normalize(name))
             added.append(HomeItem(name=name))
     db.add_all(added)
@@ -115,6 +120,8 @@ def save_trip(db: Session, trip_id: int, items: list[dict], budget=None) -> Mark
     trip = db.get(MarketTrip, trip_id)
     if trip is None or trip.closed_at is not None:
         raise ValueError("Esa compra no está abierta")
+    if not isinstance(items, list) or len(items) > MAX_TRIP_ITEMS or not all(isinstance(i, dict) for i in items):
+        raise ValueError(f"Una compra puede tener hasta {MAX_TRIP_ITEMS} productos")
     trip.items.clear()
     for position, raw in enumerate(items):
         name = re.sub(r"\s+", " ", str(raw.get("name", ""))).strip()[:80]

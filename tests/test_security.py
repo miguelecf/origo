@@ -102,9 +102,11 @@ def test_valid_login_is_not_counted_as_failed_ip_attempt(anonymous_client, owner
 
 
 def test_rate_limits_per_ip_and_user(db, owner):
-    for i in range(5):
-        assert security.authenticate(db, "owner", "wrong", "", f"192.0.2.{i}") == (None, False)
-    assert security.authenticate(db, "owner", PASSWORD, "", "198.51.100.1") == (None, True)
+    for _ in range(5):
+        assert security.authenticate(db, "owner", "wrong", "", "192.0.2.4") == (None, False)
+    assert security.authenticate(db, "owner", PASSWORD, "", "192.0.2.4") == (None, True)
+    # El bloqueo de una IP no deja afuera al dueño desde otra.
+    assert security.authenticate(db, "owner", PASSWORD, "", "198.51.100.1")[0] is not None
     for i in range(5):
         assert security.authenticate(db, f"unknown-{i}", "wrong", "", "203.0.113.1") == (None, False)
     assert security.authenticate(db, "new-user", PASSWORD, "", "203.0.113.1") == (None, True)
@@ -242,3 +244,27 @@ def test_no_credentials_in_logs(anonymous_client, owner, caplog):
     anonymous_client.post("/logout", headers={"Authorization": "Bearer SHOULD-NOT-APPEAR"})
     assert PASSWORD not in caplog.text and cookie not in caplog.text and "SHOULD-NOT-APPEAR" not in caplog.text
     assert "login_ok" in caplog.text and "logout" in caplog.text
+
+
+def test_invalid_link_keeps_guest_session(anonymous_client, db):
+    guest, token = guests.create_guest(db, name="Sofi", can_lists=True)
+    anonymous_client.get(f"/g/{token}")
+    cookie = anonymous_client.cookies.get(COOKIE_NAME)
+    assert "ya no funciona" in anonymous_client.get("/g/deliberadamente-invalido").text
+    assert security.session_identity(db, cookie) is not None
+
+
+def test_guest_cannot_flood_lists(anonymous_client, db):
+    from app.models import HomeItem
+    from app.services import lists
+
+    guest, token = guests.create_guest(db, name="Sofi", can_lists=True)
+    anonymous_client.get(f"/g/{token}")
+    anonymous_client.post("/super/casa", data={"text": "x" * 100_000})
+    assert max(len(i.name) for i in db.scalars(select(HomeItem))) <= 80
+    anonymous_client.post("/super/casa", data={"text": ",".join(f"item {i}" for i in range(1000))})
+    assert len(lists.home_items(db)) <= lists.MAX_HOME_ITEMS
+    trip = lists.start_trip(db, guest.id)
+    items = [{"name": f"p{i}", "price": "1"} for i in range(lists.MAX_TRIP_ITEMS + 1)]
+    assert anonymous_client.put(f"/super/compra/{trip.id}", json={"items": items}).status_code == 409
+    assert anonymous_client.put(f"/super/compra/{trip.id}", json={"items": items[:3]}).status_code == 200

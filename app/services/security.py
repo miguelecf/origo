@@ -70,7 +70,7 @@ def set_totp(db: Session, user: User, secret: str | None) -> None:
 def attempt_keys(ip: str, username: str | None = None, *, guest: bool = False) -> list[str]:
     keys = [("guest:" if guest else "ip:") + digest(ip)]
     if username is not None:
-        keys.append("user:" + digest(username_key(username)))
+        keys.append("user:" + digest(username_key(username) + "|" + ip))
     return keys
 
 

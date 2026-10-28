@@ -4,18 +4,20 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>{% block title %}{{ app_name }}{% endblock %}</title>
-  <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
-  <meta name="theme-color" content="#1c1c1e" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f3f3f1" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#101311" media="(prefers-color-scheme: dark)">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="{{ app_name }}">
   <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="icon" href="/static/icon.svg?v=apple-3" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="/static/icons/icon-180.png?v=apple-3">
-  <link rel="stylesheet" href="/static/app.css?v=apple-3">
+  <link rel="icon" href="/static/icon.svg?v=personal-1" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/icons/icon-180.png?v=personal-1">
+  <link rel="preload" href="/static/fonts/archivo-latin-wght.woff2?v=5.3.0" as="font" type="font/woff2" crossorigin>
+  <link rel="preload" href="/static/fonts/archivo-black-latin-400.woff2?v=5.3.0" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/static/app.css?v=personal-1">
   <script src="/static/vendor/htmx-2.0.4.min.js?v=2.0.4"></script>
   {% block page_scripts %}{% endblock %}
-  <script src="/static/app.js?v=apple-3"></script>
+  <script src="/static/app.js?v=personal-1"></script>
   <script defer src="/static/vendor/alpine-3.14.8.min.js?v=3.14.8"></script>
 </head>
 <body hx-boost="true">

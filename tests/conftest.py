@@ -1,9 +1,9 @@
 import os
 import tempfile
 
-# Antes de importar la app: nunca tocar mentor.db desde los tests.
+# Antes de importar la app: nunca tocar origo.db desde los tests.
 os.environ["DATABASE_URL"] = f"sqlite:///{tempfile.mkdtemp()}/test.db"
-os.environ["MENTOR_DEV_OPEN"] = "0"
+os.environ["ORIGO_DEV_OPEN"] = "0"
 os.environ["BASE_URL"] = "http://localhost:8000"
 os.environ["SECRET_KEY"] = "test-only-secret-not-for-deployment-12345"
 os.environ["GITHUB_CLIENT_ID"] = ""

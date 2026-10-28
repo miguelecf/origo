@@ -71,7 +71,7 @@ const withKey = (item) => ({ ...item, key: ++itemKey });
 document.addEventListener("alpine:init", () => {
   Alpine.data("market", (stateId) => {
     const state = JSON.parse(document.getElementById(stateId).textContent);
-    const storageKey = `mentor-trip-${state.tripId}`;
+    const storageKey = `origo-trip-${state.tripId}`;
     let local = null;
     try { local = JSON.parse(localStorage.getItem(storageKey)); } catch {}
     const source = local?.dirty ? local : state; // si quedó algo sin sincronizar, gana lo del teléfono
@@ -228,20 +228,20 @@ function setupPageChrome() {
   const compactTitle = document.getElementById("compact-title");
   if (title && compactBar && compactTitle && "IntersectionObserver" in window) {
     compactTitle.textContent = title.textContent.trim().replace(/\s+/g, " ");
-    if (window.mentorTitleObserver) window.mentorTitleObserver.disconnect();
-    window.mentorTitleObserver = new IntersectionObserver(([entry]) => {
+    if (window.origoTitleObserver) window.origoTitleObserver.disconnect();
+    window.origoTitleObserver = new IntersectionObserver(([entry]) => {
       const shown = !entry.isIntersecting && entry.boundingClientRect.top < 0;
       compactBar.classList.toggle("is-visible", shown);
       compactBar.setAttribute("aria-hidden", String(!shown));
     }, { threshold: 0, rootMargin: "-8px 0px 0px 0px" });
-    window.mentorTitleObserver.observe(title);
+    window.origoTitleObserver.observe(title);
   }
 
   const hint = document.getElementById("install-hint");
   const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
   const standalone = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
   let dismissed = false;
-  try { dismissed = localStorage.getItem("mentor-install-dismissed") === "1"; } catch {}
+  try { dismissed = localStorage.getItem("origo-install-dismissed") === "1"; } catch {}
   if (hint && ios && !standalone && !dismissed) hint.hidden = false;
 }
 
@@ -270,7 +270,7 @@ document.addEventListener("click", (event) => {
     callback?.();
   }
   if (event.target.closest("[data-install-dismiss]")) {
-    try { localStorage.setItem("mentor-install-dismissed", "1"); } catch {}
+    try { localStorage.setItem("origo-install-dismissed", "1"); } catch {}
     const hint = document.getElementById("install-hint");
     if (hint) hint.hidden = true;
   }

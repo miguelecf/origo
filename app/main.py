@@ -34,17 +34,17 @@ def _service_worker() -> str:
     version = hashlib.sha256("\n".join(version_parts).encode()).hexdigest()[:16]
     precache = json.dumps(assets, separators=(",", ":"))
     return f'''"use strict";
-const CACHE = "mentor-static-{version}";
+const CACHE = "origo-static-{version}";
 const ASSETS = {precache};
 const OFFLINE_HTML = `<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#000000"><title>Sin conexión | Origo</title><style>*{{box-sizing:border-box}}body{{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:#000;color:#f5f5f5;font:17px/1.5 Archivo,Arial,sans-serif}}main{{max-width:420px;padding:28px;border:2px solid #2e2e2e;border-radius:16px;background:#0c0c0c}}h1{{font:400 34px/1.05 'Archivo Black','Arial Black',sans-serif;letter-spacing:-.035em;margin:0 0 12px}}p{{margin:0;color:#9b9b9b}}a{{display:inline-flex;min-height:44px;align-items:center;margin-top:20px;padding:0 18px;border:2px solid #f5f5f5;border-radius:6px;background:#f5f5f5;color:#000;font-weight:700;text-decoration:none;box-shadow:4px 4px 0 #2a2a2a}}</style><main><h1>Estás sin conexión</h1><p>Origo necesita señal para mostrar tus datos privados. Lo que ya anotaste en la compra sigue guardado en este teléfono.</p><a href="/">Volver a intentar</a></main></html>`;
 self.addEventListener("install", event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting())));
-self.addEventListener("activate", event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith("mentor-") && key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim())));
+self.addEventListener("activate", event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith("origo-") && key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim())));
 self.addEventListener("fetch", event => {{
   const request = event.request;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
   if (url.pathname === "/logout" && request.method !== "GET") {{
-    event.respondWith(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith("mentor-")).map(key => caches.delete(key)))).then(() => fetch(request)));
+    event.respondWith(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith("origo-")).map(key => caches.delete(key)))).then(() => fetch(request)));
     return;
   }}
   if (request.method !== "GET" || url.pathname === "/login" || url.pathname === "/logout" || url.pathname.startsWith("/g/") || url.pathname === "/mcp" || url.pathname.startsWith("/mcp/") || url.pathname.startsWith("/.well-known/")) return;

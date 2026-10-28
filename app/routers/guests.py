@@ -57,5 +57,5 @@ def revoke(guest_id: int, db: Session = Depends(get_db)):
 
 def _new_link(request: Request, db: Session, name: str, token: str):
     link = _link(token)
-    text = f"Te paso el link a mi Mentor: {link}"
+    text = f"Te paso el link a mi Origo: {link}"
     return _page(request, db, new_link={"name": name, "url": link, "whatsapp": lists.whatsapp_url(text)})

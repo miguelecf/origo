@@ -1,6 +1,6 @@
 {
   "mcpServers": {
-    "mentor": {
+    "origo": {
       "command": "uv",
       "args": ["run", "--directory", ".", "python", "-m", "app.mcp_server"]
     }

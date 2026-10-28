@@ -1,11 +1,11 @@
 [Unit]
-Description=Backup diario de Mentor
+Description=Backup diario de Origo
 
 [Timer]
 OnCalendar=*-*-* 03:15:00
 RandomizedDelaySec=15m
 Persistent=true
-Unit=mentor-backup.service
+Unit=origo-backup.service
 
 [Install]
 WantedBy=timers.target

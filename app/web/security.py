@@ -10,7 +10,7 @@ from starlette.responses import PlainTextResponse
 from app.core.config import settings
 from app.core.logging import event, redact_path
 
-COOKIE_NAME = "mentor_session"
+COOKIE_NAME = "origo_session"
 OAUTH_PATHS = {"/authorize", "/token", "/register", "/revoke", "/auth/callback", "/consent"}
 
 

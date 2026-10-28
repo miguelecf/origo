@@ -14,7 +14,7 @@ def test_cli_user_password_and_totp(db, monkeypatch, capsys):
 
     def run(*args, answers=()):
         responses = iter(answers)
-        monkeypatch.setattr(sys, "argv", ["mentor", *args])
+        monkeypatch.setattr(sys, "argv", ["origo", *args])
         monkeypatch.setattr(cli.getpass, "getpass", lambda _: next(responses))
         cli.main()
 
@@ -43,22 +43,22 @@ def test_cli_password_policy(password, monkeypatch):
 
 def test_optional_log_file_has_private_permissions(tmp_path, monkeypatch):
     import logging
-    from app.core import logging as mentor_logging
+    from app.core import logging as origo_logging
     from app.core.config import settings
 
-    target = tmp_path / "mentor.log"
+    target = tmp_path / "origo.log"
     monkeypatch.setattr(settings, "LOG_FILE", str(target))
-    mentor_logging.configure_logging()
-    mentor_logging.event("test_event", value="ok")
-    for handler in mentor_logging.logger.handlers:
+    origo_logging.configure_logging()
+    origo_logging.event("test_event", value="ok")
+    for handler in origo_logging.logger.handlers:
         handler.flush()
     assert target.stat().st_mode & 0o777 == 0o600
     assert '"event":"test_event"' in target.read_text()
-    for handler in list(mentor_logging.logger.handlers):
+    for handler in list(origo_logging.logger.handlers):
         handler.close()
-        mentor_logging.logger.removeHandler(handler)
+        origo_logging.logger.removeHandler(handler)
     monkeypatch.setattr(settings, "LOG_FILE", "")
-    mentor_logging.configure_logging()
+    origo_logging.configure_logging()
 
 
 def test_backup_consistency_and_permissions(tmp_path):
@@ -70,13 +70,13 @@ def test_backup_consistency_and_permissions(tmp_path):
 
     if not shutil.which("sqlite3"):
         pytest.skip("Requiere SQLite CLI")
-    database = tmp_path / "mentor.db"
+    database = tmp_path / "origo.db"
     with sqlite3.connect(database) as connection:
         connection.execute("CREATE TABLE sample (value TEXT)")
         connection.execute("INSERT INTO sample VALUES ('dato')")
     script = Path(__file__).resolve().parents[1] / "deploy/backup.sh"
-    subprocess.run(["sh", str(script)], env={**os.environ, "MENTOR_DATA_DIR": str(tmp_path)}, check=True, capture_output=True)
-    backup, = (tmp_path / "backups").glob("mentor-*.db")
+    subprocess.run(["sh", str(script)], env={**os.environ, "ORIGO_DATA_DIR": str(tmp_path)}, check=True, capture_output=True)
+    backup, = (tmp_path / "backups").glob("origo-*.db")
     assert backup.stat().st_mode & 0o777 == 0o600
     assert database.stat().st_mode & 0o777 == 0o600
     with sqlite3.connect(backup) as connection:

@@ -1,24 +1,24 @@
 [Unit]
-Description=Mentor personal
+Description=Origo personal
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
-User=mentor
-Group=mentor
-WorkingDirectory=/opt/mentor
-EnvironmentFile=/etc/mentor/mentor.env
-Environment=HOME=/var/lib/mentor
-Environment=XDG_DATA_HOME=/var/lib/mentor
+User=origo
+Group=origo
+WorkingDirectory=/opt/origo
+EnvironmentFile=/etc/origo/origo.env
+Environment=HOME=/var/lib/origo
+Environment=XDG_DATA_HOME=/var/lib/origo
 Environment=PYTHONDONTWRITEBYTECODE=1
-ExecStart=/opt/mentor/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --proxy-headers --forwarded-allow-ips 127.0.0.1 --no-access-log --no-server-header
+ExecStart=/opt/origo/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000 --proxy-headers --forwarded-allow-ips 127.0.0.1 --no-access-log --no-server-header
 Restart=on-failure
 RestartSec=5
 UMask=0077
-StateDirectory=mentor
+StateDirectory=origo
 StateDirectoryMode=0700
-ReadWritePaths=/var/lib/mentor
+ReadWritePaths=/var/lib/origo
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true

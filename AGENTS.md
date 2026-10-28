@@ -1,4 +1,4 @@
-# AGENTS.md — mentor
+# AGENTS.md — origo
 
 App personal de registro de vida (un solo usuario). Ver README para correrla.
 

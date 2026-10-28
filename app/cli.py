@@ -19,7 +19,7 @@ def password_prompt() -> str:
 
 def main() -> None:
     os.umask(0o077)
-    parser = argparse.ArgumentParser(description="Administración local de usuarios de Mentor")
+    parser = argparse.ArgumentParser(description="Administración local de usuarios de Origo")
     commands = parser.add_subparsers(dest="command", required=True)
     for command in ("create-user", "set-password", "enable-totp", "disable-totp"):
         commands.add_parser(command).add_argument("username")
@@ -46,7 +46,7 @@ def main() -> None:
                     secret = pyotp.random_base32()
                     totp = pyotp.TOTP(secret)
                     print("Guardá este secreto en tu autenticador; no lo compartas:")
-                    print(totp.provisioning_uri(user.username, issuer_name="Mentor"))
+                    print(totp.provisioning_uri(user.username, issuer_name="Origo"))
                     if not totp.verify(getpass.getpass("Código del autenticador: ").strip(), valid_window=1):
                         raise ValueError("Código incorrecto; TOTP no se activó")
                     security.set_totp(db, user, secret)

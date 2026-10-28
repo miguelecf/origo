@@ -1,5 +1,5 @@
 """Prueba visual y funcional aislada. Ejecutar con uv run --with playwright python scripts/verify_product_ui.py --shots /tmp/shots.
-No usa mentor.db ni el servidor de desarrollo; un solo Chromium, puerto temporal.
+No usa origo.db ni el servidor de desarrollo; un solo Chromium, puerto temporal.
 """
 import argparse
 import datetime as dt
@@ -188,7 +188,7 @@ def main():
     parser.add_argument("--shots", type=Path, required=True)
     args = parser.parse_args()
     args.shots.mkdir(parents=True, exist_ok=True)
-    with tempfile.TemporaryDirectory(prefix="mentor-product-") as temporary:
+    with tempfile.TemporaryDirectory(prefix="origo-product-") as temporary:
         os.environ.update(DATABASE_URL=f"sqlite:///{temporary}/test.db", APP_PASSWORD="", GITHUB_CLIENT_ID="")
         with socket.socket() as sock:
             sock.bind(("127.0.0.1", 0))

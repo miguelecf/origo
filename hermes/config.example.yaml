@@ -2,15 +2,15 @@
 # Mezclalo con lo que ya tengas y protegé el archivo: chmod 600 ~/.hermes/config.yaml
 
 mcp_servers:
-  mentor:
-    # Mentor y Hermes en la misma máquina: la llamada nunca sale de 127.0.0.1.
-    # En Mentor: MCP_TOKEN=<token> y MCP_LOCAL_ONLY=1 (ver README, sección Hermes).
+  origo:
+    # Origo y Hermes en la misma máquina: la llamada nunca sale de 127.0.0.1.
+    # En Origo: MCP_TOKEN=<token> y MCP_LOCAL_ONLY=1 (ver docs/agentes.md).
     url: "http://127.0.0.1:8000/mcp"
     headers:
       Authorization: "Bearer PEGAR_ACA_EL_MCP_TOKEN"
     timeout: 30
     tools:
-      # Lista cerrada: si Mentor suma tools nuevas, Hermes no las ve hasta que las agregues acá.
+      # Lista cerrada: si Origo suma tools nuevas, Hermes no las ve hasta que las agregues acá.
       include:
         - get_overview
         - list_transactions
@@ -43,7 +43,7 @@ mcp_servers:
 skills:
   external_dirs:
     # El skill vive en el repo, así se actualiza con cada git pull.
-    - /opt/mentor/hermes/skills
+    - /opt/origo/hermes/skills
 
 gateway:
   platforms:

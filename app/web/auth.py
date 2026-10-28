@@ -44,7 +44,7 @@ def get_viewer(request: Request, db: Session) -> Viewer | None:
         return Viewer()
     if isinstance(identity, Guest):
         return Viewer(identity)
-    if settings.MENTOR_DEV_OPEN and not request.cookies.get(COOKIE_NAME):
+    if settings.ORIGO_DEV_OPEN and not request.cookies.get(COOKIE_NAME):
         return Viewer()  # Solo desarrollo local explícito; validado al arrancar.
     return None
 

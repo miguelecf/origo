@@ -9,7 +9,7 @@ from urllib.parse import unquote, urlsplit
 
 from app.core.config import settings
 
-logger = logging.getLogger("mentor")
+logger = logging.getLogger("origo")
 
 
 def redact_path(path: str) -> str:

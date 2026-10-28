@@ -1,12 +1,12 @@
 [Unit]
-Description=Backup consistente de SQLite de Mentor
+Description=Backup consistente de SQLite de Origo
 
 [Service]
 Type=oneshot
-User=mentor
-Group=mentor
-ExecStart=/bin/sh /opt/mentor/deploy/backup.sh
-Environment=MENTOR_DATA_DIR=/var/lib/mentor
+User=origo
+Group=origo
+ExecStart=/bin/sh /opt/origo/deploy/backup.sh
+Environment=ORIGO_DATA_DIR=/var/lib/origo
 Environment=BACKUP_RETENTION_DAYS=30
 UMask=0077
 NoNewPrivileges=true
@@ -14,6 +14,6 @@ ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
 PrivateDevices=true
-ReadWritePaths=/var/lib/mentor
+ReadWritePaths=/var/lib/origo
 CapabilityBoundingSet=
 RestrictAddressFamilies=AF_UNIX

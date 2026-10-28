@@ -1,4 +1,4 @@
-"""MCP de Mentor: el agente lee lo mismo que ves en la app (misma capa de servicios).
+"""MCP de Origo: el agente lee lo mismo que ves en la app (misma capa de servicios).
 
 Local (Claude Code, Claude Desktop): `uv run python -m app.mcp_server` por stdio, sin auth.
 Remoto (Claude.ai, ChatGPT): se monta en /mcp dentro de la app web, con OAuth de GitHub
@@ -25,13 +25,13 @@ borrar algo pedí siempre confirmación explícita.
 """
 
 
-mcp = FastMCP("Mentor", instructions=INSTRUCTIONS, mask_error_details=True)
+mcp = FastMCP("Origo", instructions=INSTRUCTIONS, mask_error_details=True)
 
 
 def remote_http_app():
     from app.services.mcp_auth import remote_auth
 
-    remote = FastMCP("Mentor", instructions=INSTRUCTIONS, auth=remote_auth(), mask_error_details=True)
+    remote = FastMCP("Origo", instructions=INSTRUCTIONS, auth=remote_auth(), mask_error_details=True)
     remote.mount(mcp)
     return remote.http_app(path="/mcp")
 
@@ -421,7 +421,7 @@ def set_subscription_active(subscription_id: int, active: bool) -> dict:
 @mcp.prompt
 def weekly_review() -> str:
     """Revisión semanal: cruza todas las áreas y marca fallas concretas."""
-    return f"""Hoy es {today().isoformat()}. Hacé mi revisión semanal con las tools de Mentor.
+    return f"""Hoy es {today().isoformat()}. Hacé mi revisión semanal con las tools de Origo.
 
 1. Llamá a get_overview, get_checkins (últimos 14 días), get_food_log (últimos 7),
    list_transactions (mes en curso), get_debts y get_weight_series (últimos 90 días).

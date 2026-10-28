@@ -8,11 +8,11 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
     APP_NAME: str = "Origo"
-    DATABASE_URL: str = "sqlite:///./mentor.db"
+    DATABASE_URL: str = "sqlite:///./origo.db"
     TIMEZONE: str = "America/Argentina/Buenos_Aires"
-    OWNER_NAME: str = "Miguel"
+    OWNER_NAME: str = "Origo"  # cómo te ven tus invitados: "Le debés $ 30.000 a ..."
     SECRET_KEY: str = "dev-secret-change-me"
-    MENTOR_DEV_OPEN: bool = False
+    ORIGO_DEV_OPEN: bool = False
     SESSION_IDLE_SECONDS: int = 1800
     SESSION_ABSOLUTE_SECONDS: int = 86400
     BASE_URL: str = "http://localhost:8000"
@@ -33,10 +33,10 @@ class Settings(BaseSettings):
         if url.scheme == "https":
             if len(self.SECRET_KEY.encode()) < 32 or len(set(self.SECRET_KEY)) < 12 or any(word in self.SECRET_KEY.lower() for word in ("change-me", "example", "changeme")):
                 raise ValueError("SECRET_KEY debe ser aleatoria y tener al menos 32 bytes en HTTPS")
-            if self.MENTOR_DEV_OPEN:
-                raise ValueError("MENTOR_DEV_OPEN no está permitido en HTTPS")
-        if self.MENTOR_DEV_OPEN and url.hostname not in {"localhost", "127.0.0.1", "::1"}:
-            raise ValueError("MENTOR_DEV_OPEN solo está permitido en localhost")
+            if self.ORIGO_DEV_OPEN:
+                raise ValueError("ORIGO_DEV_OPEN no está permitido en HTTPS")
+        if self.ORIGO_DEV_OPEN and url.hostname not in {"localhost", "127.0.0.1", "::1"}:
+            raise ValueError("ORIGO_DEV_OPEN solo está permitido en localhost")
         if self.MCP_TOKEN and (len(self.MCP_TOKEN.encode()) < 32 or len(set(self.MCP_TOKEN)) < 12):
             raise ValueError("MCP_TOKEN debe ser aleatorio y tener al menos 32 bytes")
         if min(self.SESSION_IDLE_SECONDS, self.SESSION_ABSOLUTE_SECONDS) <= 0:

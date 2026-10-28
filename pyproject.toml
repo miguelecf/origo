@@ -1,7 +1,8 @@
 [project]
-name = "mentor"
+name = "origo"
 version = "0.1.0"
-description = "Registro personal de vida: plata, deudas, cuerpo, listas y check-in, con MCP para agentes"
+description = "Origo: tu registro personal de plata, deudas, entreno, comidas y súper, con MCP para agentes"
+license = "MIT"
 authors = [
     { name = "Miguel Caraballo", email = "63631970+Miguelecf@users.noreply.github.com" }
 ]

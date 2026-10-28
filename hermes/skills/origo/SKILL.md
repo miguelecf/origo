@@ -1,38 +1,38 @@
 ---
-name: mentor
-description: Registrar y revisar la vida de Miguel en Mentor (plata, suscripciones, deudas y cuotas, peso, comidas, sueño, ánimo, súper) con las tools MCP mcp_mentor_*. Usar cuando Miguel cuente un gasto o ingreso, una suscripción, una deuda, un pago de cuota, lo que comió, su peso, cómo durmió, qué falta en casa, o pida un resumen, vencimientos o la revisión semanal.
+name: origo
+description: Registrar y revisar la vida del usuario en Origo (plata, suscripciones, deudas y cuotas, peso, comidas, sueño, ánimo, súper) con las tools MCP mcp_origo_*. Usar cuando el usuario cuente un gasto o ingreso, una suscripción, una deuda, un pago de cuota, lo que comió, su peso, cómo durmió, qué falta en casa, o pida un resumen, vencimientos o la revisión semanal.
 version: 1.0.0
 metadata:
   hermes:
-    tags: [mentor, finanzas, salud, telegram]
+    tags: [origo, finanzas, salud, telegram]
     category: personal
 ---
 
-# Mentor
+# Origo
 
-Mentor es la app personal de Miguel. Todo lo que anotás acá aparece en la app al instante y al revés.
-Las tools llegan por MCP con el prefijo `mcp_mentor_` (por ejemplo `mcp_mentor_add_transaction`).
-Si no aparecen, corré `/reload-mcp` y, si siguen sin estar, avisale a Miguel que el servidor `mentor`
+Origo es la app personal del usuario: su registro de plata, deudas, cuerpo, entreno y súper. Todo lo que anotás acá aparece en la app al instante y al revés.
+Las tools llegan por MCP con el prefijo `mcp_origo_` (por ejemplo `mcp_origo_add_transaction`).
+Si no aparecen, corré `/reload-mcp` y, si siguen sin estar, avisale al usuario que el servidor `origo`
 no responde. No inventes datos.
 
 ## Reglas
 
 - Respondé en español rioplatense, corto, como en un chat. Plata en formato argentino: `$ 12.345,50`.
-- **Solo hablás de esto en el chat privado con Miguel.** Si el mensaje viene de un grupo o de otra
-  persona, no leas ni muestres datos de Mentor.
+- **Solo hablás de esto en el chat privado con el usuario.** Si el mensaje viene de un grupo o de otra
+  persona, no leas ni muestres datos de Origo.
 - **Anotá directo** cuando el mensaje es claro ("gasté 12500 en el súper"). Preguntá solo si falta algo
   que cambia el registro: monto, si es gasto o ingreso, a quién se le debe, cuántas cuotas.
 - Después de cada alta, confirmá en una línea qué guardaste, con el id: "Anotado: gasto de $ 12.500 en
   Súper (#231)". Así se puede corregir.
 - **Borrar o desmarcar** (`delete_transaction`, `set_installment_paid` con `paid=false`, rechazar un aviso
-  de pago) solo con un "sí" explícito de Miguel después de mostrarle qué vas a tocar.
+  de pago) solo con un "sí" explícito del usuario después de mostrarle qué vas a tocar.
 - Fechas en ISO (`YYYY-MM-DD`). "Ayer", "el viernes", etc. calculalos con el `today` que devuelve
   `get_overview`, no con tu reloj. Los rangos son `[from_date, to_date)`.
 - Nunca muestres tokens, links de invitados ni el `MCP_TOKEN`.
 
 ## Qué tool usar
 
-| Miguel dice | Tool |
+| El usuario dice | Tool |
 |---|---|
 | "Gasté 8.000 en nafta", "cobré el sueldo" | `add_transaction` (kind `expense`/`income`, categoría de la lista de la tool) |
 | "Ana me debe 30 lucas en 3 cuotas" | `add_debt` (direction `owed_to_me`, kind `person`) |
@@ -62,22 +62,22 @@ Marcas válidas: tarjetas `naranjax`, `mercadopago`, `brubank`, `lemon`, `visa`,
 ## Procedimientos
 
 **Pago de cuota.** Buscá la cuota pendiente más próxima de esa deuda (la de menor `number` sin
-`paid_on`). Si hay más de una deuda que coincide, preguntá cuál. Al marcarla, Mentor ya registra el
+`paid_on`). Si hay más de una deuda que coincide, preguntá cuál. Al marcarla, Origo ya registra el
 gasto o ingreso en Plata: no llames además a `add_transaction`.
 
 **Resumen.** `get_overview` primero. Contestá con 3 a 5 líneas: balance del mes, lo que más gastó,
 deudas que vencen en 7 días, y un dato de salud si hay algo raro (poco sueño, peso que sube).
 
-**Revisión semanal.** Usá el prompt MCP `weekly_review` de Mentor si está disponible. Si no, seguí sus
+**Revisión semanal.** Usá el prompt MCP `weekly_review` de Origo si está disponible. Si no, seguí sus
 pasos: overview, check-ins de 14 días, comidas de 7, movimientos del mes, deudas y peso de 90 días;
 máximo 3 fallas concretas con su dato y una acción chica para cada una.
 
 **Suscripciones.** Pesos y dólares no se suman entre sí: informalos por separado. Marcar un cobro ya lo
 anota como gasto en Plata (categoría Suscripciones) y corre el próximo cobro; no llames además a
-`add_transaction`. Si es en dólares y Miguel no dijo cuánto salió en pesos, preguntáselo.
+`add_transaction`. Si es en dólares y el usuario no dijo cuánto salió en pesos, preguntáselo.
 
-**Avisos programados.** Si Miguel pide recordatorios, creá un cron que entregue en Telegram. Por ejemplo:
-`hermes cron create "daily at 9am" "Usá el skill mentor: llamá a get_due_payments con days 3 y a
+**Avisos programados.** Si el usuario pide recordatorios, creá un cron que entregue en Telegram. Por ejemplo:
+`hermes cron create "daily at 9am" "Usá el skill origo: llamá a get_due_payments con days 3 y a
 get_overview; si hay cuotas o suscripciones (subscriptions.charging_next_7_days) por cobrarse, mandame
 una línea por cada una con quién o qué, monto, fecha y si está atrasada. Si no hay nada, no
 mandes nada." --deliver telegram`.

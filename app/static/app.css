@@ -853,3 +853,91 @@ button:disabled, button:disabled:hover { box-shadow: none; transform: none; bord
 @media (min-width: 900px) { .days { max-width: 560px; } }
 .lines.tight > li { padding-inline: 0.75rem; }
 .days .count { color: inherit; }
+
+/*
+  Origo: negro profundo como el logo. Grises para separar, blancos para lo importante
+  (acción principal, selección, balance) y el verde solo en detalles.
+*/
+@font-face { font-family: "Outfit"; src: url("/static/fonts/outfit-latin-wght.woff2?v=5.3.0") format("woff2"); font-weight: 100 900; font-display: swap; }
+:root {
+  --paper: #000000;
+  --sheet: #0c0c0c;
+  --gray: #161616;
+  --ink: #f5f5f5;
+  --ink-soft: #9b9b9b;
+  --rule: #232323;
+  --line: #2e2e2e;
+  --shadow: #2a2a2a;
+  --white: #f5f5f5;
+  --brand: var(--white);
+  --brand-ink: #000000;
+  --accent: #3fae80;
+  --accent-soft: color-mix(in srgb, #3fae80 16%, #0c0c0c);
+  --pos: #4cc38a;
+  --neg: #ff6f61;
+  --marker: #1d1a0c;
+  --marker-ink: #ffe58a;
+  --wordmark: "Outfit", "Archivo", Arial, sans-serif;
+  color-scheme: dark;
+}
+html, body { background: var(--paper); }
+a { color: var(--ink); }
+input:focus-visible, select:focus-visible, textarea:focus-visible, button:focus-visible, a:focus-visible, summary:focus-visible {
+  outline-color: var(--accent);
+}
+input:where(:not([type=checkbox]):not([type=radio])), select, textarea { background: #111111; border-color: var(--line); }
+input::placeholder, textarea::placeholder { color: #6f6f6f; opacity: 1; }
+input[type=checkbox] { accent-color: var(--accent); }
+
+/* Botones: el principal es blanco; el secundario, gris con borde. */
+.btn, button { border-color: var(--white); }
+.btn.ghost, button.ghost { background: var(--sheet); color: var(--ink); border-color: #3a3a3a; }
+button.destructive { background: var(--neg); color: #000; border-color: var(--neg); }
+.whatsapp { background: #1f7a4d; color: #fff; border-color: #1f7a4d; }
+
+/* Superficies */
+.card, .login, .offline, details.sheet, .lines, .totals > div { border-color: var(--line); background: var(--sheet); }
+.debt-group > header { background: var(--gray); border-bottom-color: var(--line); }
+.marker { border-color: #4a3f12; }
+.tag { border-color: #3a3a3a; }
+.bar { background: var(--gray); }
+.bar span, .workout-progress span { background: var(--accent); }
+.cta { background: var(--sheet); color: var(--ink); border-color: var(--white); }
+.cta span:first-child { font-weight: 750; }
+
+/* La pieza blanca: el balance del mes. */
+.dashboard .hero { background: var(--white); color: #000; border-color: var(--white); box-shadow: 7px 7px 0 #2f2f2f; }
+.dashboard .hero h2, .dashboard .hero small, .dashboard .hero b, .dashboard .hero .metric, .dashboard .hero::after { color: #000; }
+.dashboard .hero .metric.neg { color: #c0352b; }
+
+/* Detalles en verde */
+.now-tag { background: var(--accent); color: #000; border-color: var(--accent); }
+.diet-slot.is-now, .now-meal { border-color: var(--accent); box-shadow: 4px 4px 0 color-mix(in srgb, var(--accent) 35%, #000); }
+.workout li.done .workout-row { background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 55%, #000); }
+.workout li.done .check { background: var(--accent); color: #000; border-color: var(--accent); }
+.workout-progress { background: #111111; border-color: var(--line); }
+.lines li.is-today { background: var(--accent-soft); }
+.brand-grid label:has(input:checked) { background: var(--gray); border-color: var(--white); box-shadow: 4px 4px 0 var(--shadow); }
+.switch input:checked + span { background: var(--accent); }
+.faces label:has(input:checked) { background: var(--white); color: #000; border-color: var(--white); }
+.faces label:has(input:checked) small { color: #000; }
+.initials { background: var(--gray); color: var(--ink); border-color: var(--line); }
+.avatar { border-color: var(--line); }
+.till { background: var(--paper); border-bottom-color: var(--line); }
+
+/* Navegación */
+.tabbar, .compact-bar { background: #050505; border-color: var(--line); }
+.tabbar a { color: var(--ink-soft); }
+.tabbar a[aria-current="page"] { background: var(--white); color: #000; }
+.tab-emoji { opacity: 0.55; }
+.form-sheet, .confirm-dialog { background: #0a0a0a; border-color: #3a3a3a; }
+.dialog-handle { background: #4a4a4a; }
+
+/* Marca: anillo y punto con la tipografía redondeada del logo. */
+.nav-brand { font-family: var(--wordmark); font-weight: 500; font-size: 1.35rem; letter-spacing: 0; color: var(--white); }
+.brand-lockup { align-items: center; text-align: center; gap: 0.9rem; padding-block: 0.5rem 0.75rem; }
+.brand-lockup .logo-mark { width: 84px; height: 84px; color: var(--white); filter: drop-shadow(0 2px 6px rgb(255 255 255 / 0.12)); }
+.brand-lockup h1 { font-family: var(--wordmark); font-weight: 500; font-size: 52px; letter-spacing: 0; line-height: 1; }
+.brand-lockup p { font-family: var(--wordmark); font-weight: 300; font-size: 1.05rem; letter-spacing: 0.04em; line-height: 1.5; color: #c9c9c9; max-width: 22rem; }
+.brand-lockup p b { font-weight: 600; color: var(--white); letter-spacing: 0.02em; }
+.login { background: transparent; border: 0; box-shadow: none; }

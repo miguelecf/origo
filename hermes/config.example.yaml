@@ -33,6 +33,10 @@ mcp_servers:
         - set_weight_goal
         - add_to_home_list
         - toggle_home_item
+        - get_subscriptions
+        - add_subscription
+        - mark_subscription_charged
+        - set_subscription_active
         # Para que no pueda borrar nada, sacá esta línea.
         - delete_transaction
 

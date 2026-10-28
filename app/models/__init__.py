@@ -6,9 +6,10 @@ from app.models.guests import Guest, PaymentClaim
 from app.models.lists import HomeItem, MarketItem, MarketTrip, PriceRecord
 
 from app.models.security import LoginAttempt, User, WebSession
+from app.models.subscriptions import Subscription
 
 __all__ = [
     "LoginAttempt", "User", "WebSession",
     "Checkin", "Debt", "FoodEntry", "Guest", "HomeItem", "Installment", "MarketItem",
-    "MarketTrip", "PaymentClaim", "PriceRecord", "Setting", "Transaction", "Weight", "WeeklyReview",
+    "MarketTrip", "PaymentClaim", "PriceRecord", "Setting", "Subscription", "Transaction", "Weight", "WeeklyReview",
 ]

@@ -13,7 +13,7 @@ from fastmcp import FastMCP
 
 from app.core.clock import month_bounds, today
 from app.core.database import SessionLocal, init_db
-from app.services import body, brands, checkins, debts, finance, guests, lists, overview
+from app.services import body, brands, checkins, debts, finance, guests, lists, overview, subscriptions
 
 INSTRUCTIONS = """\
 Registro personal de la vida de una persona: plata, deudas, peso, comidas, sueño, ánimo,
@@ -82,6 +82,14 @@ def _catalog(kind: str) -> str:
     return ", ".join(f"{slug} ({name})" for slug, name in brands.CATALOGS[kind].items())
 
 
+def _subscription(s) -> dict:
+    return {
+        "id": s.id, "name": s.name, "amount": _num(s.amount), "currency": s.currency, "period": s.period,
+        "category": s.category, "next_charge": s.next_charge.isoformat(), "paid_with": s.paid_with,
+        "note": s.note, "active": s.active,
+    }
+
+
 def _weight(w) -> dict | None:
     return {"date": w.date.isoformat(), "kg": _num(w.kg)} if w else None
 
@@ -130,6 +138,10 @@ def get_overview(from_date: str | None = None, to_date: str | None = None) -> di
             "last_7_days": {k: _num(v) if k != "days" else v for k, v in o["last_7_days"].items()},
             "today_checkin_done": o["today"]["checkin"] is not None,
             "today_meals_logged": o["today"]["meals"],
+            "subscriptions": {
+                "monthly_cost": {c: _num(v) for c, v in o["subscriptions"]["monthly"].items()},
+                "charging_next_7_days": [_subscription(s) for s in o["subscriptions"]["due_soon"]],
+            },
             "home_list_pending": o["home_pending"],
         }
 
@@ -359,6 +371,51 @@ def delete_transaction(transaction_id: int) -> dict:
     with _db() as db:
         finance.delete_transaction(db, transaction_id)
         return {"deleted": transaction_id}
+
+
+@mcp.tool
+def get_subscriptions(include_paused: bool = True) -> dict:
+    """Suscripciones (IA, streaming, cursos...) con su próximo cobro, y el costo mensual de las activas
+    por moneda (ARS y USD por separado; una anual cuenta un doceavo)."""
+    with _db() as db:
+        subs = subscriptions.list_subscriptions(db, include_paused)
+        return {"monthly_cost": {c: _num(v) for c, v in subscriptions.monthly_totals(subs).items()},
+                "subscriptions": [_subscription(s) for s in subs]}
+
+
+@mcp.tool(description=(
+    "Anota una suscripción. currency: ARS | USD. period: monthly | yearly. "
+    f"category: {', '.join(subscriptions.CATEGORIES)}. next_charge: fecha del próximo cobro (por defecto hoy). "
+    f"paid_with (opcional), con qué se paga: {', '.join(subscriptions.PAYMENT_OPTIONS)}."
+))
+def add_subscription(
+    name: str, amount: float, currency: str = "ARS", period: str = "monthly", category: str = "Otros",
+    next_charge: str | None = None, paid_with: str | None = None, note: str = "",
+) -> dict:
+    with _db() as db:
+        return _subscription(subscriptions.create_subscription(
+            db, name=name, amount=Decimal(str(amount)), currency=currency, period=period, category=category,
+            next_charge=_date(next_charge), paid_with=paid_with, note=note,
+        ))
+
+
+@mcp.tool
+def mark_subscription_charged(subscription_id: int, amount_ars: float | None = None, date: str | None = None) -> dict:
+    """Registra el cobro de una suscripción como gasto en Plata (categoría Suscripciones) y pasa el
+    próximo cobro al período siguiente. Si es en USD, amount_ars (lo que salió en pesos) es obligatorio."""
+    with _db() as db:
+        tx = subscriptions.mark_charged(
+            db, subscription_id, amount_ars=Decimal(str(amount_ars)) if amount_ars is not None else None, on=_date(date),
+        )
+        sub = db.get(subscriptions.Subscription, subscription_id)
+        return {"transaction_id": tx.id, "amount": _num(tx.amount), "next_charge": sub.next_charge.isoformat()}
+
+
+@mcp.tool
+def set_subscription_active(subscription_id: int, active: bool) -> dict:
+    """Pausa (active=false) o reactiva una suscripción. Pausada no suma al costo mensual."""
+    with _db() as db:
+        return _subscription(subscriptions.set_active(db, subscription_id, active))
 
 
 @mcp.prompt

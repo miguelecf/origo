@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.clock import add_months, month_bounds, today
 from app.core.database import get_db
-from app.services import finance
+from app.services import brands, finance, subscriptions
 from app.web.forms import parse_amount, parse_date
 from app.web.templates import render
 
@@ -54,3 +54,64 @@ def add(
 def delete(transaction_id: int, mes: str = Form(""), db: Session = Depends(get_db)):
     finance.delete_transaction(db, transaction_id)
     return RedirectResponse(f"/plata?mes={mes}" if mes else "/plata", status_code=303)
+
+
+# --- Suscripciones ---
+
+SUBS = "/plata/suscripciones"
+
+
+@router.get("/suscripciones")
+def subscriptions_page(request: Request, db: Session = Depends(get_db)):
+    subs = subscriptions.list_subscriptions(db)
+    return render(
+        request, "pages/subscriptions.html",
+        active_subs=[s for s in subs if s.active], paused_subs=[s for s in subs if not s.active],
+        totals=subscriptions.monthly_totals(subs), categories=subscriptions.CATEGORIES,
+        periods=subscriptions.PERIOD_LABELS, payment_options=subscriptions.PAYMENT_OPTIONS,
+        suggestions=subscriptions.SUGGESTIONS, brand_label=brands.label, today=today(),
+        error=request.query_params.get("error"),
+    )
+
+
+@router.post("/suscripciones")
+def add_subscription(
+    name: str = Form(...), amount: str = Form(...), currency: str = Form("ARS"), period: str = Form("monthly"),
+    category: str = Form("Otros"), next_charge: str = Form(""), paid_with: str = Form(""), note: str = Form(""),
+    db: Session = Depends(get_db),
+):
+    try:
+        value = parse_amount(amount)
+        if value is None:
+            raise ValueError("Monto inválido")
+        subscriptions.create_subscription(
+            db, name=name, amount=value, currency=currency, period=period, category=category,
+            next_charge=parse_date(next_charge), paid_with=paid_with, note=note,
+        )
+    except ValueError as exc:
+        return RedirectResponse(f"{SUBS}?error={exc}", status_code=303)
+    return RedirectResponse(SUBS, status_code=303)
+
+
+@router.post("/suscripciones/{subscription_id}/cobrada")
+def charged(subscription_id: int, amount_ars: str = Form(""), db: Session = Depends(get_db)):
+    try:
+        subscriptions.mark_charged(db, subscription_id, amount_ars=parse_amount(amount_ars))
+    except ValueError as exc:
+        return RedirectResponse(f"{SUBS}?error={exc}", status_code=303)
+    return RedirectResponse(SUBS, status_code=303)
+
+
+@router.post("/suscripciones/{subscription_id}/activa")
+def toggle_active(subscription_id: int, active: bool = Form(...), db: Session = Depends(get_db)):
+    try:
+        subscriptions.set_active(db, subscription_id, active)
+    except ValueError as exc:
+        return RedirectResponse(f"{SUBS}?error={exc}", status_code=303)
+    return RedirectResponse(SUBS, status_code=303)
+
+
+@router.post("/suscripciones/{subscription_id}/borrar")
+def delete_subscription(subscription_id: int, db: Session = Depends(get_db)):
+    subscriptions.delete_subscription(db, subscription_id)
+    return RedirectResponse(SUBS, status_code=303)

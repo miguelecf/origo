@@ -6,6 +6,10 @@
   <h1>{{ MONTHS[month.month - 1] | capitalize }} <span class="soft">{{ month.year }}</span></h1>
   <a href="/plata?mes={{ next_month.strftime('%Y-%m') }}" class="month-nav" aria-label="Mes siguiente">›</a>
 </header>
+<nav class="segments plata-tabs" aria-label="Secciones de Plata">
+  <a href="/plata" aria-current="page">🧾 Movimientos</a>
+  <a href="/plata/suscripciones">🔁 Suscripciones</a>
+</nav>
 
 <div class="stack">
   {% include "partials/error.html" %}

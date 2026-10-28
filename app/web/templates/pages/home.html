@@ -23,6 +23,12 @@
   <a href="/deudas" class="card upcoming"><h2>{{ ico('📆') }}Próximos vencimientos</h2>
     <ul>{% for i in d.upcoming %}<li><span class="grow">{{ i.debt.person }}<br><small>{{ i.due_date | short_date }}, cuota {{ i.number }}</small></span><strong class="num">{{ i.amount | money }}</strong></li>{% else %}<li>No hay cuotas con vencimiento pendiente.</li>{% endfor %}</ul>
   </a>
+  {% set subs = o.subscriptions %}
+  <a href="/plata/suscripciones" class="card subs"><h2>{{ ico('🔁') }}Suscripciones</h2>
+    <strong class="metric">{{ subs.monthly.ARS | money }} <small>/ mes</small></strong>
+    {% if subs.monthly.USD %}<small>Más US{{ subs.monthly.USD | money }} por mes en dólares</small>{% endif %}
+    <small>{% if subs.due_soon %}Esta semana: {{ subs.due_soon | map(attribute='name') | join_y }}{% else %}Sin cobros esta semana{% endif %}</small>
+  </a>
   <a href="/cuerpo" class="card"><h2>{{ ico('⚖️') }}Peso</h2><strong class="metric">{{ (w.current.kg | number ~ ' kg') if w.current else 'Sin registro' }}</strong>
     <small>{% if w.current %}Arrancaste en {{ w.start.kg | number }} kg{% if w.goal %}. Meta: {{ w.goal | number }} kg{% endif %}{% else %}Anotá tu primer peso{% endif %}</small>
   </a>

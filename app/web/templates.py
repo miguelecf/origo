@@ -51,7 +51,8 @@ def join_y(values) -> str:
 EMOJI = {
     "Súper": "🛒", "Comida afuera": "🍔", "Casa": "🏠", "Servicios": "💡", "Transporte": "🚌",
     "Salud": "💊", "Ocio": "🎉", "Ropa": "👕", "Deudas": "🤝", "Otros": "📦",
-    "Sueldo": "💼", "Extra": "✨",
+    "Sueldo": "💼", "Extra": "✨", "Suscripciones": "🔁",
+    "IA": "🤖", "Streaming": "📺", "Cursos": "🎓", "Software": "💻", "Música": "🎵",
     "Te deben": "🤑", "Tarjetas": "💳", "Entidades": "🏦", "Le debés a personas": "👥", "Personas": "👥",
 }
 
@@ -74,7 +75,7 @@ def emoji_text(text: str) -> str:
 
 templates.env.filters.update(money=money, number=number, short_date=short_date, join_y=join_y,
                              with_emoji=with_emoji, emoji_text=emoji_text)
-templates.env.globals.update(app_name=settings.APP_NAME, owner_name=settings.OWNER_NAME, MONTHS=MONTHS, ico=ico)
+templates.env.globals.update(app_name=settings.APP_NAME, owner_name=settings.OWNER_NAME, MONTHS=MONTHS, ico=ico, EMOJI=EMOJI)
 
 
 def render(request: Request, name: str, **context):

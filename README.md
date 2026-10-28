@@ -24,7 +24,7 @@ Tests: `uv run pytest`
 | Sección | Qué hace |
 |---|---|
 | Inicio | Balance del mes, deudas, peso desde que arrancaste, promedios de 7 días, alertas de tarjeta |
-| Plata | Ingresos y gastos por categoría, en una página por mes |
+| Plata | Ingresos y gastos por categoría, en una página por mes. Pestaña Suscripciones: IA, streaming, cursos, en pesos o dólares; marcar un cobro lo pasa a gastos y corre el próximo |
 | Deudas | Me deben / debo, en cuotas. "Presté la tarjeta" crea los dos lados (la persona te debe, vos le debés al banco) y avisa si una cuota vence y no te pagaron. Marcar una cuota la registra en Plata |
 | Cuerpo | Comidas en texto libre (Enter y listo), peso con gráfico, meta |
 | Súper | Lista de casa (se manda por WhatsApp) y la compra: escribís precios (con o sin nombre) y el total se suma solo. Recuerda precios y avisa cuánto subieron. Al terminar se carga como gasto en Súper. Funciona sin señal |
@@ -62,9 +62,10 @@ El transporte stdio sigue siendo local, sin OAuth: protegé el acceso al usuario
 
 Tools de lectura: `get_overview`, `list_transactions`, `get_debts`, `get_due_payments`,
 `get_weight_series`, `get_food_log`, `get_checkins`, `get_market_trips`, `get_price_history`,
-`get_home_list`. De escritura: `add_transaction`, `add_debt`, `lend_card`, `set_installment_paid`,
+`get_home_list`, `get_subscriptions`. De escritura: `add_transaction`, `add_debt`, `lend_card`, `set_installment_paid`,
 `resolve_payment_claim`, `save_checkin`, `log_food`, `log_weight`, `set_weight_goal`,
-`add_to_home_list`, `toggle_home_item`, `delete_transaction`. Prompt: `weekly_review`.
+`add_to_home_list`, `toggle_home_item`, `add_subscription`, `mark_subscription_charged`,
+`set_subscription_active`, `delete_transaction`. Prompt: `weekly_review`.
 
 ## Hermes por Telegram
 

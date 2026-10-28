@@ -17,5 +17,5 @@ class Transaction(Base):
     amount: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     category: Mapped[str] = mapped_column(String(40))
     note: Mapped[str] = mapped_column(String(200), default="")
-    source: Mapped[str] = mapped_column(String(20), default="manual")  # manual | market | installment
+    source: Mapped[str] = mapped_column(String(20), default="manual")  # manual | market | installment | subscription
     created_at: Mapped[dt.datetime] = mapped_column(default=now)

@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Suscripciones | {{ app_name }}{% endblock %}
+{% block layout %}page-grid{% endblock %}
+{% macro price(s) %}{{ 'US' if s.currency == 'USD' }}{{ s.amount | money }}{% endmacro %}
+{% macro sub_row(s) %}
+<details class="debt">
+  <summary>
+    <span class="avatar initials sub-icon" aria-hidden="true">{{ EMOJI.get(s.category, '📦') }}</span>
+    <span class="grow stack-sm"><b>{{ s.name }}</b>
+      <small>{% if not s.active %}Pausada{% elif s.next_charge < today %}Atrasada: se cobraba {{ s.next_charge | short_date }}{% elif s.next_charge == today %}Se cobra hoy{% else %}Se cobra {{ s.next_charge | short_date }}{% endif %}</small>
+    </span>
+    <span class="debt-amount"><strong class="num">{{ price(s) }}</strong><small>{{ 'por mes' if s.period == 'monthly' else 'por año' }}</small></span>
+    <span class="disclosure" aria-hidden="true">⌄</span>
+  </summary>
+  <div class="debt-body stack-sm">
+    <p class="soft">{{ periods[s.period] }}, {{ s.category | with_emoji }}{% if s.paid_with %}, se paga con {{ brand_label(s.paid_with) }}{% endif %}{% if s.note %}. {{ s.note }}{% endif %}</p>
+    {% if s.active %}
+    <form method="post" action="/plata/suscripciones/{{ s.id }}/cobrada" class="row">
+      {% if s.currency == 'USD' %}
+      <input name="amount_ars" data-money inputmode="decimal" required placeholder="Cuánto salió en pesos" autocomplete="off" aria-label="Cuánto se cobró en pesos">
+      {% endif %}
+      <button type="submit" class="{{ 'grow' if s.currency != 'USD' }}">✅ Ya se cobró</button>
+    </form>
+    <small class="soft">Lo anota como gasto en Plata y pasa el próximo cobro al {{ 'mes' if s.period == 'monthly' else 'año' }} siguiente.</small>
+    {% endif %}
+    <div class="row between">
+      <form method="post" action="/plata/suscripciones/{{ s.id }}/activa">
+        <input type="hidden" name="active" value="{{ 'false' if s.active else 'true' }}">
+        <button type="submit" class="ghost small-btn">{{ '⏸️ Pausar' if s.active else '▶️ Reactivar' }}</button>
+      </form>
+      <form method="post" action="/plata/suscripciones/{{ s.id }}/borrar" data-confirm="¿Borrar {{ s.name }}? Los cobros ya anotados quedan en Plata.">
+        <button class="text danger">Borrar</button>
+      </form>
+    </div>
+  </div>
+</details>
+{% endmacro %}
+{% block content %}
+<header class="page-head"><h1>{{ ico('🔁') }}Suscripciones</h1></header>
+<nav class="segments plata-tabs" aria-label="Secciones de Plata">
+  <a href="/plata">🧾 Movimientos</a>
+  <a href="/plata/suscripciones" aria-current="page">🔁 Suscripciones</a>
+</nav>
+
+<div class="stack">
+  {% include "partials/error.html" %}
+  <div class="totals two" aria-live="polite" aria-atomic="true">
+    <div><small>🗓️ Por mes</small><strong class="num">{{ totals.ARS | money }}</strong></div>
+    {% if totals.USD %}
+    <div><small>💵 En dólares, por mes</small><strong class="num">US{{ totals.USD | money }}</strong></div>
+    {% else %}
+    <div><small>📆 Por año</small><strong class="num">{{ (totals.ARS * 12) | money }}</strong></div>
+    {% endif %}
+  </div>
+  <button type="button" class="btn ghost block-btn" data-dialog-open="sub-dialog">➕ Anotar una suscripción</button>
+  <dialog id="sub-dialog" class="form-sheet" aria-labelledby="sub-dialog-title">
+    <section class="sheet-panel">
+      <div class="dialog-handle" aria-hidden="true"></div>
+      <header class="sheet-heading"><h2 id="sub-dialog-title">🔁 Anotar una suscripción</h2></header>
+      <form method="post" action="/plata/suscripciones" class="stack">
+        <label>Nombre
+          <input name="name" list="sub-suggestions" required maxlength="80" placeholder="Ej. ChatGPT, Netflix, Platzi" autocomplete="off">
+        </label>
+        <datalist id="sub-suggestions">{% for name in suggestions %}<option value="{{ name }}">{% endfor %}</datalist>
+        <label>Cuánto cuesta
+          <input name="amount" data-money inputmode="decimal" required placeholder="$ 0" autocomplete="off">
+        </label>
+        <fieldset class="stack-sm">
+          <legend>Moneda</legend>
+          <div class="choice">
+            <label><input type="radio" name="currency" value="ARS" checked>🇦🇷 Pesos</label>
+            <label><input type="radio" name="currency" value="USD">💵 Dólares</label>
+          </div>
+        </fieldset>
+        <fieldset class="stack-sm">
+          <legend>Cada cuánto</legend>
+          <div class="choice">
+            {% for value, label in periods.items() %}
+            <label><input type="radio" name="period" value="{{ value }}" {% if loop.first %}checked{% endif %}>{{ label }}</label>
+            {% endfor %}
+          </div>
+        </fieldset>
+        <label>Categoría
+          <select name="category">{% for c in categories %}<option value="{{ c }}">{{ c | emoji_text }}</option>{% endfor %}</select>
+        </label>
+        <label>Próximo cobro
+          <input type="date" name="next_charge" value="{{ today.isoformat() }}" required>
+        </label>
+        <label>Con qué la pagás <small>Opcional</small>
+          <select name="paid_with">
+            <option value="">Sin especificar</option>
+            {% for slug, name in payment_options.items() %}<option value="{{ slug }}">{{ name }}</option>{% endfor %}
+          </select>
+        </label>
+        <label>Nota<input name="note" maxlength="200" placeholder="Ej. plan Pro, la compartimos con Ana (opcional)" autocomplete="off"></label>
+        <div class="dialog-actions"><button type="button" class="ghost" data-dialog-close>Cancelar</button><button type="submit">Guardar suscripción</button></div>
+      </form>
+    </section>
+  </dialog>
+</div>
+
+<div class="debt-groups">
+  <section class="card debt-group">
+    <header class="row between"><h2>{{ ico('✅') }}Activas</h2><span class="num soft">{{ active_subs | length }}</span></header>
+    {% for s in active_subs %}{{ sub_row(s) }}{% else %}<p class="empty">Todavía no anotaste suscripciones. Sumá la primera con el botón de arriba.</p>{% endfor %}
+  </section>
+  {% if paused_subs %}
+  <section class="card debt-group">
+    <header class="row between"><h2>{{ ico('⏸️') }}Pausadas</h2><span class="num soft">{{ paused_subs | length }}</span></header>
+    {% for s in paused_subs %}{{ sub_row(s) }}{% endfor %}
+  </section>
+  {% endif %}
+</div>
+{% endblock %}

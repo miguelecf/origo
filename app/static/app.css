@@ -774,3 +774,8 @@ button:disabled, button:disabled:hover { box-shadow: none; transform: none; bord
   .tabbar a { padding: 0 0.9rem; min-height: 40px; }
 }
 .summary .num { font-family: inherit; }
+.page-grid > .plata-tabs { grid-column: 1 / -1; }
+.sub-icon { font-size: 1.3rem; background: var(--sheet); }
+.dashboard .subs { grid-column: 1 / -1; }
+@media (min-width: 900px) { .dashboard { grid-auto-flow: row dense; } }
+.plata-tabs { justify-self: start; align-self: start; }

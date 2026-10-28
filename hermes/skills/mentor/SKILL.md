@@ -1,6 +1,6 @@
 ---
 name: mentor
-description: Registrar y revisar la vida de Miguel en Mentor (plata, deudas y cuotas, peso, comidas, sueño, ánimo, súper) con las tools MCP mcp_mentor_*. Usar cuando Miguel cuente un gasto o ingreso, una deuda, un pago de cuota, lo que comió, su peso, cómo durmió, qué falta en casa, o pida un resumen, vencimientos o la revisión semanal.
+description: Registrar y revisar la vida de Miguel en Mentor (plata, suscripciones, deudas y cuotas, peso, comidas, sueño, ánimo, súper) con las tools MCP mcp_mentor_*. Usar cuando Miguel cuente un gasto o ingreso, una suscripción, una deuda, un pago de cuota, lo que comió, su peso, cómo durmió, qué falta en casa, o pida un resumen, vencimientos o la revisión semanal.
 version: 1.0.0
 metadata:
   hermes:
@@ -44,6 +44,10 @@ no responde. No inventes datos.
 | "Dormí 6 horas", "ánimo 3", "caminé 40 min" | `save_checkin` (lo que no mandes queda como estaba) |
 | "Almorcé milanesa con puré" | `log_food` |
 | "Peso 81,4" / "mi meta es 78" | `log_weight` / `set_weight_goal` |
+| "Me suscribí a Claude, 20 dólares por mes" | `add_subscription` (currency `USD`, category `IA`, `next_charge` = fecha del próximo cobro) |
+| "Se cobró Netflix", "me cobraron ChatGPT 26.000 pesos" | `get_subscriptions` para el id, después `mark_subscription_charged` (en USD, `amount_ars` obligatorio) |
+| "¿Cuánto gasto en suscripciones?" | `get_subscriptions` (`monthly_cost` separa ARS y USD) |
+| "Pausá Max" / "volví a Max" | `set_subscription_active` |
 | "Falta yerba y pan" / "¿qué falta en casa?" | `add_to_home_list` / `get_home_list`; tachar con `toggle_home_item` |
 | "¿Cómo vengo este mes?" | `get_overview`, y bajar a `list_transactions`, `get_debts`, etc. |
 | "¿Cuánto subió la leche?" | `get_price_history` |
@@ -68,9 +72,14 @@ deudas que vencen en 7 días, y un dato de salud si hay algo raro (poco sueño, 
 pasos: overview, check-ins de 14 días, comidas de 7, movimientos del mes, deudas y peso de 90 días;
 máximo 3 fallas concretas con su dato y una acción chica para cada una.
 
+**Suscripciones.** Pesos y dólares no se suman entre sí: informalos por separado. Marcar un cobro ya lo
+anota como gasto en Plata (categoría Suscripciones) y corre el próximo cobro; no llames además a
+`add_transaction`. Si es en dólares y Miguel no dijo cuánto salió en pesos, preguntáselo.
+
 **Avisos programados.** Si Miguel pide recordatorios, creá un cron que entregue en Telegram. Por ejemplo:
-`hermes cron create "daily at 9am" "Usá el skill mentor: llamá a get_due_payments con days 3 y, si hay
-cuotas, mandame una línea por cada una con quién, monto, fecha y si está atrasada. Si no hay nada, no
+`hermes cron create "daily at 9am" "Usá el skill mentor: llamá a get_due_payments con days 3 y a
+get_overview; si hay cuotas o suscripciones (subscriptions.charging_next_7_days) por cobrarse, mandame
+una línea por cada una con quién o qué, monto, fecha y si está atrasada. Si no hay nada, no
 mandes nada." --deliver telegram`.
 
 ## Errores comunes

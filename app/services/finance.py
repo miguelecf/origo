@@ -10,7 +10,7 @@ from app.models import Installment, Transaction
 INCOME_CATEGORIES = ["Sueldo", "Extra", "Deudas", "Otros"]
 EXPENSE_CATEGORIES = [
     "Súper", "Comida afuera", "Casa", "Servicios", "Transporte",
-    "Salud", "Ocio", "Ropa", "Deudas", "Otros",
+    "Salud", "Ocio", "Ropa", "Suscripciones", "Deudas", "Otros",
 ]
 
 

@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 
 from app.core.clock import month_bounds, today
 from app.models import FoodEntry, HomeItem
-from app.services import body, checkins, debts, finance, guests, lists, subscriptions
+from app.services import body, checkins, debts, diet, finance, guests, lists, subscriptions, training
 
 
 def overview(db: Session, start: dt.date | None = None, end: dt.date | None = None) -> dict:
@@ -39,6 +39,8 @@ def overview(db: Session, start: dt.date | None = None, end: dt.date | None = No
             "monthly": subscriptions.monthly_totals(subscriptions.list_subscriptions(db, include_paused=False)),
             "due_soon": subscriptions.due_until(db, week_ahead),
         },
+        "training": training.today_summary(db, day),
+        "meal_now": next(s for s in diet.plan(db) if s["key"] == diet.current_slot()),
         "home_pending": db.scalar(select(func.count(HomeItem.id)).where(HomeItem.done.is_(False))),
         "open_trip": lists.open_trip(db),
     }

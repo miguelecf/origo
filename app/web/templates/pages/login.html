@@ -1,7 +1,11 @@
 {% extends "base.html" %}
 {% block content %}
 <div class="login">
-  <h1>{{ ico('🧭') }}{{ app_name }}</h1>
+  <div class="brand-lockup">
+    {% include "partials/logo.html" %}
+    <h1>{{ app_name | lower }}</h1>
+    <p>Ocupate de lo importante, <b>{{ app_name }}</b> guarda las estadísticas.</p>
+  </div>
   {% if owner_with_link %}
     <p>Estás adentro como {{ owner_name }}. Para ver cómo lo ve tu invitado, abrí el link en otro navegador o en modo incógnito.</p>
     <a class="btn" href="/">Volver al inicio</a>

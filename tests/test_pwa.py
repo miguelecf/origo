@@ -16,7 +16,7 @@ def test_manifest_has_installable_fields_and_existing_png_icons(anonymous_client
     manifest = anonymous_client.get("/manifest.webmanifest").json()
     static_dir = Path(__file__).resolve().parents[1] / "app" / "static"
 
-    assert manifest["name"] == "Mentor"
+    assert manifest["name"] == "Origo"
     assert manifest["short_name"]
     assert manifest["start_url"] == "/"
     assert manifest["scope"] == "/"

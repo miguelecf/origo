@@ -16,6 +16,17 @@
     <div class="row wrap"><small>📥 Entró <b>{{ f.income | money }}</b></small><small>📤 Salió <b>{{ f.expense | money }}</b></small></div>
     <small>{% if f.by_category %}Mayor gasto: {{ f.by_category[0][0] | with_emoji }}, {{ f.by_category[0][1] | money }}{% else %}Anotá tu primer ingreso o gasto{% endif %}</small>
   </a>
+  {% set tr = o.training %}
+  <a href="/entreno" class="card training-card">
+    <h2>{{ ico('🏋️') }}Entreno de hoy</h2>
+    {% if tr.total %}
+    <strong class="metric">{{ tr.title or tr.name }}</strong>
+    <small>{{ tr.done }} de {{ tr.total }} ejercicios hechos</small>
+    {% else %}
+    <strong class="metric">Descanso</strong>
+    <small>Hoy no hay rutina</small>
+    {% endif %}
+  </a>
   <a href="/deudas" class="card"><h2>{{ ico('🤑') }}Te deben</h2><strong class="metric pos">{{ d.owed_to_me | money }}</strong><small>Plata por cobrar</small></a>
   <a href="/deudas" class="card"><h2>{{ ico('💸') }}Debés</h2><strong class="metric neg">{{ d.i_owe | money }}</strong>
     <div class="breakdown">{% for kind, name in [('card', 'Tarjetas'), ('entity', 'Entidades'), ('person', 'Personas')] %}<span>{{ name | with_emoji }}</span><span>{{ d.by_kind[kind].i_owe | money }}</span>{% endfor %}</div>
@@ -35,7 +46,7 @@
   <a href="/dia" class="card"><h2>{{ ico('😴') }}Sueño</h2><strong class="metric">{{ s.sleep_hours | number }} h</strong><small>Promedio de 7 días</small></a>
   <a href="/dia" class="card"><h2>{{ ico(['😐', '😞', '😕', '😐', '🙂', '😄'][s.mood | round | int] if s.mood else '😐') }}Ánimo</h2><strong class="metric">{{ s.mood | number }} <small>/ 5</small></strong><small>Promedio de 7 días</small></a>
   <a href="/dia" class="card"><h2>{{ ico('🏃') }}Movimiento</h2><strong class="metric">{{ s.movement_min | number(0) }} min</strong><small>Promedio diario</small></a>
-  <a href="/cuerpo" class="card"><h2>{{ ico('🍽️') }}Comidas de hoy</h2><strong class="metric">{{ o.today.meals }}</strong><small>Seguí anotando lo que comés</small></a>
+  <a href="/cuerpo" class="card"><h2>{{ ico('🍽️') }}Comidas de hoy</h2><strong class="metric">{{ o.today.meals }}</strong><small>{% set m = o.meal_now %}Ahora toca {{ m.name | lower }}{% if m.lines %}: {{ m.lines[0] }}{% endif %}</small></a>
   <a href="{{ '/super/compra' if o.open_trip else '/super' }}" class="card"><h2>{{ ico('🛒') }}Súper</h2><strong class="metric">{{ o.open_trip.total | money if o.open_trip else o.home_pending }}</strong><small>{{ 'Compra en curso' if o.open_trip else 'Pendientes en la lista de casa' }}</small></a>
 </div>
 {% endblock %}

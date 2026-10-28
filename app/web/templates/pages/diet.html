@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}Dieta | {{ app_name }}{% endblock %}
+{% block layout %}page-grid{% endblock %}
+{% block content %}
+<header class="page-head"><h1>{{ ico('📋') }}Dieta</h1></header>
+{% set body_tab = "/cuerpo/dieta" %}{% include "partials/body_tabs.html" %}
+
+<form method="get" action="/cuerpo/dieta" class="row diet-search" role="search">
+  <input type="search" name="q" value="{{ query }}" placeholder="Buscar en tu plan: pollo, avena…" aria-label="Buscar en tu plan" autocomplete="off" enterkeyhint="search">
+  <button type="submit">Buscar</button>
+</form>
+
+{% if results is not none %}
+<section class="card block diet-results" aria-live="polite">
+  <header class="row between"><h2>🔎 «{{ query }}»</h2>{% if query %}<a href="/cuerpo/dieta">Limpiar</a>{% endif %}</header>
+  {% for slot in results %}
+  <div class="stack-sm">
+    <h3>{{ slot.emoji }} {{ slot.name }}</h3>
+    <ul class="plan-lines">{% for line in slot.lines %}<li>{{ line }}</li>{% endfor %}</ul>
+  </div>
+  {% else %}
+  <p class="soft">No aparece «{{ query }}» en tu plan.</p>
+  {% endfor %}
+</section>
+{% endif %}
+
+<div class="diet-slots">
+  {% for slot in meal_plan %}
+  <section class="card diet-slot {{ 'is-now' if slot.key == now_slot }}" id="{{ slot.key }}">
+    <header class="row between">
+      <h2>{{ ico(slot.emoji) }}{{ slot.name }}</h2>
+      {% if slot.key == now_slot %}<span class="tag now-tag">Ahora</span>{% else %}<small class="soft">desde las {{ slot['from'].strftime('%H:%M') }}</small>{% endif %}
+    </header>
+    {% if slot.lines %}
+    <ul class="plan-lines">{% for line in slot.lines %}<li>{{ line }}</li>{% endfor %}</ul>
+    {% endif %}
+    <details class="fold" {% if not slot.lines %}open{% endif %}>
+      <summary>{{ '✏️ Editar' if slot.lines else '✏️ Escribir qué va acá' }}</summary>
+      <form method="post" action="/cuerpo/dieta/{{ slot.key }}" class="stack-sm">
+        <textarea name="text" rows="4" maxlength="2000" aria-label="Plan de {{ slot.name | lower }}" placeholder="Una opción por renglón. Ej.:&#10;Avena con banana&#10;2 tostadas con queso y café">{{ slot.text }}</textarea>
+        <button type="submit">Guardar {{ slot.name | lower }}</button>
+      </form>
+    </details>
+    {% if saved == slot.key %}<p class="ok" role="status">✅ Guardado.</p>{% endif %}
+  </section>
+  {% endfor %}
+</div>
+{% endblock %}

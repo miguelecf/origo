@@ -1,0 +1,83 @@
+{% extends "base.html" %}
+{% block title %}Entreno | {{ app_name }}{% endblock %}
+{% block layout %}page-grid{% endblock %}
+{% macro dose(x) %}{{ x.sets }} × {{ x.reps }}{% if x.kg is not none %}, {{ x.kg | number }} kg{% endif %}{% endmacro %}
+{% block content %}
+{% set total = plan['items'] | length %}
+{% set done_count = plan['items'] | selectattr('id', 'in', done) | list | length %}
+<header class="page-head with-actions">
+  <div>
+    <h1>{{ ico('🏋️') }}{{ plan.title or ('Entreno de hoy' if total else 'Hoy descansás') }}</h1>
+    <p class="soft">{{ plan.name }} {{ day.day }}/{{ day.month }}{% if total %}, {{ done_count }} de {{ total }} hechos{% endif %}</p>
+  </div>
+  <a href="/entreno/rutina" class="btn ghost small-btn">✏️ Editar rutina</a>
+</header>
+
+<div class="stack">
+  {% include "partials/error.html" %}
+  {% if total %}
+  <div class="workout-progress" role="progressbar" aria-label="Ejercicios hechos" aria-valuemin="0" aria-valuemax="{{ total }}" aria-valuenow="{{ done_count }}">
+    <span style="width: {{ (done_count / total * 100) | round(1) }}%"></span>
+  </div>
+  <ul class="workout">
+    {% for item in plan['items'] %}
+    {% set is_done = item.id in done %}
+    {% set prev = last.get(item.exercise_id) %}
+    <li id="ej-{{ item.id }}" class="{{ 'done' if is_done }}">
+      <form method="post" action="/entreno/hecho/{{ item.id }}">
+        <button type="submit" class="workout-row" aria-pressed="{{ 'true' if is_done else 'false' }}">
+          <span class="check" aria-hidden="true">{{ '✓' if is_done else loop.index }}</span>
+          <span class="grow stack-sm">
+            <b>{{ item.exercise.name }}</b>
+            <span class="dose num">{{ dose(item) }}</span>
+            <small>{% if prev %}La última vez: {{ dose(prev) }}, {{ prev.date | short_date }}{% else %}Primera vez{% endif %}</small>
+          </span>
+        </button>
+      </form>
+    </li>
+    {% endfor %}
+  </ul>
+  {% if done_count == total %}<p class="marker">🎉 Rutina completa. Quedó en el historial.</p>{% endif %}
+  {% else %}
+  <section class="card rest-day stack-sm">
+    {% if upcoming %}
+    {% set next_day, next_plan = upcoming %}
+    <h2>😌 Hoy no hay rutina</h2>
+    <p>{{ 'Mañana' if (next_day - day).days == 1 else 'El ' ~ next_plan.name | lower }} toca <b>{{ next_plan.title or 'entrenar' }}</b>: {{ next_plan['items'] | length }} ejercicios.</p>
+    {% else %}
+    <h2>🗓️ Todavía no armaste tu rutina</h2>
+    <p class="soft">Elegí qué ejercicios hacés cada día y acá vas a ver lo que toca hoy.</p>
+    <a href="/entreno/rutina" class="btn">Armar mi rutina</a>
+    {% endif %}
+  </section>
+  {% endif %}
+</div>
+
+<section class="card block">
+  <h2>{{ ico('🗓️') }}Tu semana</h2>
+  <ul class="lines tight">
+    {% for d in week %}
+    <li class="{{ 'is-today' if d.weekday == day.weekday() }}">
+      <a href="/entreno/rutina?dia={{ d.weekday }}" class="row-link">
+        <b class="weekday">{{ d.name[:3] }}</b>
+        <span class="grow">{{ d.title or ('Descanso' if not d['items'] else 'Entreno') }}</span>
+        <span class="soft num">{{ d['items'] | length or '—' }}</span>
+        <span class="chevron" aria-hidden="true">›</span>
+      </a>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+
+<section class="card block">
+  <h2>{{ ico('📜') }}Historial</h2>
+  {% for date, logs in history %}
+  <div class="stack-sm history-day">
+    <h3>{{ date | short_date | capitalize }}, {{ logs | length }} ejercicio{{ 's' if logs | length != 1 }}</h3>
+    <p class="soft">{% for log in logs %}{{ log.exercise.name }} {{ dose(log) }}{{ '; ' if not loop.last }}{% endfor %}</p>
+  </div>
+  {% else %}
+  <p class="soft">Cuando marques ejercicios como hechos, aparecen acá con su fecha y sus kilos.</p>
+  {% endfor %}
+</section>
+{% endblock %}

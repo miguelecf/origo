@@ -10,14 +10,14 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
   <meta name="apple-mobile-web-app-title" content="{{ app_name }}">
   <link rel="manifest" href="/manifest.webmanifest">
-  <link rel="icon" href="/static/icon.svg?v=personal-1" type="image/svg+xml">
-  <link rel="apple-touch-icon" href="/static/icons/icon-180.png?v=personal-1">
+  <link rel="icon" href="/static/icon.svg?v=origo-1" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/icons/icon-180.png?v=origo-1">
   <link rel="preload" href="/static/fonts/archivo-latin-wght.woff2?v=5.3.0" as="font" type="font/woff2" crossorigin>
   <link rel="preload" href="/static/fonts/archivo-black-latin-400.woff2?v=5.3.0" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/static/app.css?v=personal-1">
+  <link rel="stylesheet" href="/static/app.css?v=origo-1">
   <script src="/static/vendor/htmx-2.0.4.min.js?v=2.0.4"></script>
   {% block page_scripts %}{% endblock %}
-  <script src="/static/app.js?v=personal-1"></script>
+  <script src="/static/app.js?v=origo-1"></script>
   <script defer src="/static/vendor/alpine-3.14.8.min.js?v=3.14.8"></script>
 </head>
 <body hx-boost="true">
@@ -31,15 +31,15 @@
   </form>
   {% endif %}
   {% if viewer.is_owner %}
-    {% set tabs = [("/", "Inicio", "🏠"), ("/plata", "Plata", "💰"), ("/deudas", "Deudas", "🤝"), ("/cuerpo", "Cuerpo", "💪"), ("/super", "Súper", "🛒"), ("/dia", "Día", "☀️")] %}
+    {% set tabs = [("/", "Inicio", "🏠"), ("/plata", "Plata", "💰"), ("/deudas", "Deudas", "🤝"), ("/cuerpo", "Cuerpo", "💪"), ("/entreno", "Entreno", "🏋️"), ("/super", "Súper", "🛒")] %}
   {% else %}
     {% set tabs = ([ ("/super", "Súper", "🛒") ] if viewer.can("lists") else []) + ([ ("/deudas", "Deudas", "🤝") ] if viewer.can("debts") else []) %}
   {% endif %}
   <nav class="tabbar" aria-label="Secciones">
     <div class="tabs">
-      <span class="nav-brand">🧭 {{ app_name }}</span>
+      <span class="nav-brand">{% include "partials/logo.html" %}{{ app_name | lower }}</span>
     {% for href, label, icon in tabs %}
-      <a href="{{ href }}" {% if active == href or (href != "/" and active.startswith(href)) %}aria-current="page"{% endif %}>
+      <a href="{{ href }}" {% if active == href or (href != "/" and active.startswith(href)) or (href == "/cuerpo" and active.startswith("/dia")) %}aria-current="page"{% endif %}>
         <span class="tab-emoji" aria-hidden="true">{{ icon }}</span><span>{{ label }}</span>
       </a>
     {% endfor %}

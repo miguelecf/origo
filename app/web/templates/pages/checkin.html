@@ -5,6 +5,7 @@
   <h1>{{ ico('☀️') }}{{ 'Hoy' if day == today else day | short_date | capitalize }}</h1>
   {% if saved %}<p class="ok" role="status">✅ Guardado.</p>{% endif %}
 </header>
+{% set body_tab = "/dia" %}{% include "partials/body_tabs.html" %}
 
 <form method="post" action="/dia" class="stack card">
   <input type="hidden" name="date" value="{{ day.isoformat() }}">

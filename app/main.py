@@ -14,7 +14,7 @@ from app.core.config import settings
 from app.core.database import init_db
 from app.core.logging import configure_logging
 from app.mcp_server import remote_http_app
-from app.routers import auth, body, checkin, debts, finance, guests, home, lists
+from app.routers import auth, body, checkin, debts, finance, guests, home, lists, training
 from app.web.auth import require_owner
 from app.web.security import SecurityMiddleware
 
@@ -36,7 +36,7 @@ def _service_worker() -> str:
     return f'''"use strict";
 const CACHE = "mentor-static-{version}";
 const ASSETS = {precache};
-const OFFLINE_HTML = `<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f3f3f1"><title>Sin conexión | Mentor</title><style>*{{box-sizing:border-box}}body{{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:#f3f3f1;color:#000;font:17px/1.5 Archivo,Arial,sans-serif}}main{{max-width:420px;padding:28px;border:3px solid #000;border-radius:16px;background:#fff;box-shadow:7px 7px 0 #000}}h1{{font:400 34px/1.05 'Archivo Black','Arial Black',sans-serif;letter-spacing:-.035em;margin:0 0 12px}}p{{margin:0;color:#555b57}}a{{display:inline-flex;min-height:44px;align-items:center;margin-top:20px;padding:0 18px;border:2px solid #000;border-radius:6px;background:#183e32;color:#fff;font-weight:700;text-decoration:none;box-shadow:4px 4px 0 #000}}</style><main><h1>Estás sin conexión</h1><p>Mentor necesita señal para mostrar tus datos privados. Lo que ya anotaste en la compra sigue guardado en este teléfono.</p><a href="/">Volver a intentar</a></main></html>`;
+const OFFLINE_HTML = `<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f3f3f1"><title>Sin conexión | Origo</title><style>*{{box-sizing:border-box}}body{{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:#f3f3f1;color:#000;font:17px/1.5 Archivo,Arial,sans-serif}}main{{max-width:420px;padding:28px;border:3px solid #000;border-radius:16px;background:#fff;box-shadow:7px 7px 0 #000}}h1{{font:400 34px/1.05 'Archivo Black','Arial Black',sans-serif;letter-spacing:-.035em;margin:0 0 12px}}p{{margin:0;color:#555b57}}a{{display:inline-flex;min-height:44px;align-items:center;margin-top:20px;padding:0 18px;border:2px solid #000;border-radius:6px;background:#183e32;color:#fff;font-weight:700;text-decoration:none;box-shadow:4px 4px 0 #000}}</style><main><h1>Estás sin conexión</h1><p>Origo necesita señal para mostrar tus datos privados. Lo que ya anotaste en la compra sigue guardado en este teléfono.</p><a href="/">Volver a intentar</a></main></html>`;
 self.addEventListener("install", event => event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(ASSETS)).then(() => self.skipWaiting())));
 self.addEventListener("activate", event => event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith("mentor-") && key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim())));
 self.addEventListener("fetch", event => {{
@@ -84,7 +84,7 @@ def create_app() -> FastAPI:
     # Deudas y Súper chequean permisos por ruta: también entran invitados con link mágico.
     app.include_router(debts.router)
     app.include_router(lists.router)
-    for module in (home, finance, body, checkin, guests):
+    for module in (home, finance, body, checkin, guests, training):
         app.include_router(module.router, dependencies=[Depends(require_owner)])
 
     @app.get("/sw.js", include_in_schema=False)
@@ -98,7 +98,7 @@ def create_app() -> FastAPI:
     @app.get("/offline", include_in_schema=False)
     def offline():
         return HTMLResponse(
-            '<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f3f3f1"><title>Sin conexión | Mentor</title><link rel="stylesheet" href="/static/app.css?v=personal-1"><main class="offline"><h1>Estás sin conexión</h1><p>Mentor necesita señal para mostrar tus datos privados. Lo que ya anotaste en la compra sigue guardado en este teléfono.</p><a class="btn" href="/">Volver a intentar</a></main></html>',
+            '<!doctype html><html lang="es"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#f3f3f1"><title>Sin conexión | Origo</title><link rel="stylesheet" href="/static/app.css?v=origo-1"><main class="offline"><h1>Estás sin conexión</h1><p>Origo necesita señal para mostrar tus datos privados. Lo que ya anotaste en la compra sigue guardado en este teléfono.</p><a class="btn" href="/">Volver a intentar</a></main></html>',
             headers={"Cache-Control": "no-store"},
         )
 

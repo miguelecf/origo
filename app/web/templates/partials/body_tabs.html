@@ -1,0 +1,5 @@
+<nav class="segments sub-tabs" aria-label="Secciones de Cuerpo">
+  {% for href, label in [("/cuerpo", "🍽️ Comidas"), ("/cuerpo/dieta", "📋 Dieta"), ("/dia", "☀️ Día")] %}
+  <a href="{{ href }}" {% if body_tab == href %}aria-current="page"{% endif %}>{{ label }}</a>
+  {% endfor %}
+</nav>

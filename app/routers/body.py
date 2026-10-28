@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from app.core.clock import today
 from app.core.database import get_db
-from app.services import body
+from app.services import body, diet
 from app.web.forms import parse_amount, parse_date
 from app.web.templates import render
 
@@ -25,7 +25,7 @@ def body_page(request: Request, db: Session = Depends(get_db)):
         request, "pages/body.html",
         summary=body.weight_summary(db), series=series[-30:][::-1],
         chart={"labels": [w.date.isoformat() for w in series], "values": [float(w.kg) for w in series]},
-        meals_by_day=meals_by_day, today=day,
+        meals_by_day=meals_by_day, today=day, meal_plan=diet.plan(db), now_slot=diet.current_slot(),
     )
 
 
@@ -60,3 +60,21 @@ def set_goal(kg: str = Form(""), db: Session = Depends(get_db)):
     value = parse_amount(kg)
     body.set_goal(db, value if value and value > 0 else None)
     return RedirectResponse("/cuerpo", status_code=303)
+
+
+@router.get("/dieta")
+def diet_page(request: Request, q: str = "", db: Session = Depends(get_db)):
+    return render(
+        request, "pages/diet.html",
+        meal_plan=diet.plan(db), now_slot=diet.current_slot(), query=q.strip()[:80],
+        results=diet.search(db, q[:80]) if q.strip() else None, saved=request.query_params.get("ok"),
+    )
+
+
+@router.post("/dieta/{slot}")
+def save_diet(slot: str, text: str = Form(""), db: Session = Depends(get_db)):
+    try:
+        diet.save(db, slot, text)
+    except ValueError:
+        return RedirectResponse("/cuerpo/dieta", status_code=303)
+    return RedirectResponse(f"/cuerpo/dieta?ok={slot}#{slot}", status_code=303)

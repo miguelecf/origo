@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Rutina | {{ app_name }}{% endblock %}
+{% block layout %}page-grid{% endblock %}
+{% block content %}
+<header class="page-head with-actions">
+  <h1>{{ ico('✏️') }}Rutina</h1>
+  <a href="/entreno" class="btn ghost small-btn">🏋️ Ver hoy</a>
+</header>
+
+<nav class="segments days" aria-label="Día de la semana">
+  {% for d in week %}
+  <a href="/entreno/rutina?dia={{ d.weekday }}" aria-label="{{ d.name }}" {% if d.weekday == plan.weekday %}aria-current="page"{% endif %}>
+    {{ d.name[:2] }}{% if d['items'] %}<small class="count">{{ d['items'] | length }}</small>{% endif %}
+  </a>
+  {% endfor %}
+</nav>
+
+<div class="stack">
+  {% include "partials/error.html" %}
+  <section class="card stack">
+    <h2>{{ plan.name }}{% if plan.weekday == today.weekday() %} <span class="tag now-tag">Hoy</span>{% endif %}</h2>
+    <form method="post" action="/entreno/rutina/{{ plan.weekday }}/titulo" class="row">
+      <input name="title" value="{{ plan.title }}" maxlength="80" placeholder="Nombre del día, ej. Pecho y tríceps" aria-label="Nombre del día" autocomplete="off">
+      <button type="submit" class="ghost">Guardar</button>
+    </form>
+
+    <ul class="lines routine-items">
+      {% for item in plan['items'] %}
+      <li>
+        <span class="grow"><b>{{ item.exercise.name }}</b>
+          <small class="num">{{ item.sets }} × {{ item.reps }}{% if item.kg is not none %}, {{ item.kg | number }} kg{% endif %}</small></span>
+        <form method="post" action="/entreno/rutina/item/{{ item.id }}/subir"><button class="x" aria-label="Subir {{ item.exercise.name }}" {% if loop.first %}disabled{% endif %}>↑</button></form>
+        <form method="post" action="/entreno/rutina/item/{{ item.id }}/bajar"><button class="x" aria-label="Bajar {{ item.exercise.name }}" {% if loop.last %}disabled{% endif %}>↓</button></form>
+        <form method="post" action="/entreno/rutina/item/{{ item.id }}/borrar" data-confirm="¿Sacar {{ item.exercise.name }} del {{ plan.name | lower }}? Lo que ya hiciste queda en el historial.">
+          <button class="x danger" aria-label="Sacar {{ item.exercise.name }}">×</button>
+        </form>
+      </li>
+      {% else %}
+      <li class="empty">Día de descanso. Agregá un ejercicio abajo si entrenás este día.</li>
+      {% endfor %}
+    </ul>
+  </section>
+
+  <form method="post" action="/entreno/rutina/{{ plan.weekday }}" class="card stack">
+    <h2>{{ ico('➕') }}Agregar al {{ plan.name | lower }}</h2>
+    <label>Ejercicio
+      <input name="name" list="ejercicios" required maxlength="80" placeholder="Ej. Press banca" autocomplete="off">
+    </label>
+    <datalist id="ejercicios">{% for name in exercise_names %}<option value="{{ name }}">{% endfor %}</datalist>
+    <div class="row dose-fields">
+      <label>Series<input name="sets" inputmode="numeric" required placeholder="4" autocomplete="off"></label>
+      <label>Repeticiones<input name="reps" inputmode="numeric" required placeholder="10" autocomplete="off"></label>
+      <label>Kilos<input name="kg" inputmode="decimal" placeholder="Opcional" autocomplete="off" aria-label="Kilos, opcional"></label>
+    </div>
+    <button type="submit">Agregar</button>
+  </form>
+</div>
+{% endblock %}

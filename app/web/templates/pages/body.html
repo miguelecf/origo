@@ -3,6 +3,17 @@
 {% block layout %}page-grid{% endblock %}
 {% block content %}
 <header class="page-head"><h1>{{ ico('💪') }}Cuerpo</h1></header>
+{% set body_tab = "/cuerpo" %}{% include "partials/body_tabs.html" %}
+
+{% set slot = meal_plan | selectattr("key", "equalto", now_slot) | first %}
+<a href="/cuerpo/dieta#{{ slot.key }}" class="card now-meal">
+  <h2>{{ ico(slot.emoji) }}Ahora toca: {{ slot.name }}</h2>
+  {% if slot.lines %}
+  <ul>{% for line in slot.lines %}<li>{{ line }}</li>{% endfor %}</ul>
+  {% else %}
+  <p class="soft">Todavía no escribiste qué va en {{ slot.name | lower }}. Cargalo en Dieta.</p>
+  {% endif %}
+</a>
 
 <div class="stack">
 <form method="post" action="/cuerpo/comida" class="quick-line card">

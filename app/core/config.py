@@ -7,7 +7,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    APP_NAME: str = "Mentor"
+    APP_NAME: str = "Origo"
     DATABASE_URL: str = "sqlite:///./mentor.db"
     TIMEZONE: str = "America/Argentina/Buenos_Aires"
     OWNER_NAME: str = "Miguel"

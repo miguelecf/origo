@@ -18,11 +18,19 @@ def bearer_path(path: str) -> bool:
     return path in OAUTH_PATHS or path == "/mcp" or path.startswith("/mcp/") or path.startswith("/.well-known/")
 
 
-PROXY_HEADERS = ("cf-connecting-ip", "cf-ray", "x-forwarded-for", "forwarded")
+PROXY_HEADERS = (
+    "cf-connecting-ip", "cf-ray", "x-forwarded-for", "forwarded",
+    "x-forwarded-proto", "x-forwarded-host",
+    "tailscale-user-login", "tailscale-user-name", "tailscale-user-profile-pic",
+    "tailscale-headers-info", "tailscale-funnel-request", "tailscale-app-capabilities",
+)
 
 
 def from_this_machine(scope) -> bool:
-    """Llamada directa desde el mismo servidor: peer de loopback y sin pasar por el túnel ni un proxy."""
+    """Loopback directo, sin indicios de Cloudflare, Tailscale Serve u otro proxy.
+
+    Estos headers solo restringen acceso; nunca autentican al dueño.
+    """
     peer = (scope.get("client") or ("", 0))[0]
     headers = Headers(scope=scope)
     return peer in {"127.0.0.1", "::1"} and not any(h in headers for h in PROXY_HEADERS)
@@ -60,6 +68,12 @@ class SecurityMiddleware:
             return await self.app(scope, receive, send)
         start = time.monotonic()
         headers = Headers(scope=scope)
+        public_origin = urlsplit(settings.BASE_URL)
+        if public_origin.scheme == "https" and origin("https://" + headers.get("host", "")) == origin(settings.BASE_URL):
+            # TLS puede terminar en el host fuera de Docker. Usar el origen
+            # configurado para redirects, sin confiar en headers ni IPs de proxy.
+            # Las llamadas MCP directas a loopback conservan su esquema HTTP.
+            scope["scheme"] = "https"
         ip = client_ip(scope)
         scope.setdefault("state", {})["client_ip"] = ip
         status = 500

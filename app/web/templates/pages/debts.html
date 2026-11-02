@@ -6,8 +6,7 @@
 {% set due = next_due(debt) %}
 <details class="debt">
   <summary>
-    {% if debt.brand %}<img class="avatar" src="/static/brands/{{ debt.brand }}.png" alt="" width="40" height="40">
-    {% else %}<span class="avatar initials" aria-hidden="true">{{ debt.person[:2] | upper }}</span>{% endif %}
+    <span class="avatar initials" aria-hidden="true">{{ debt.person[:2] | upper }}</span>
     <span class="grow stack-sm"><b>{{ debt.person }}</b><small>{% if not left %}Saldada{% elif due %}{{ 'Venció' if due < today else 'Vence' }} {{ due | short_date }}{% else %}Sin vencimiento{% endif %}</small></span>
     <span class="debt-amount"><strong class="num">{{ left | money }}</strong><small>{{ paid }}/{{ n }}</small></span>
     <span class="disclosure" aria-hidden="true">⌄</span>
@@ -41,7 +40,7 @@
 <div class="brand-grid">
   {% for slug, name in catalog.items() %}
   <label><input type="radio" name="{{ selected }}" value="{{ slug }}" x-model="{{ selected }}" :disabled="{{ disabled }}">
-    <img src="/static/brands/{{ slug }}.png" alt="" width="40" height="40"><span>{{ name }}</span>
+    <span class="avatar initials" aria-hidden="true">{{ name[:2] | upper }}</span><span>{{ name }}</span>
   </label>
   {% endfor %}
   {% if selected == 'entityBrand' %}<label><input type="radio" name="entityBrand" value="" x-model="entityBrand" :disabled="{{ disabled }}"><span class="avatar initials" aria-hidden="true">➕</span><span>Otra</span></label>{% endif %}

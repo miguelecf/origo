@@ -1,0 +1,40 @@
+# Un dueño por instancia. Hermes se conecta al MCP existente; no se instala otra copia.
+services:
+  origo:
+    build: .
+    env_file:
+      - ${ORIGO_ENV_FILE:-.env}
+    environment:
+      # No aceptar accidentalmente la DB relativa ni el modo abierto de desarrollo.
+      DATABASE_URL: sqlite:////data/origo.db
+      ORIGO_DEV_OPEN: "0"
+      # El host y los proxies llegan desde la red Docker, no desde loopback.
+      # Sigue siendo obligatorio el bearer MCP (o el OAuth configurado).
+      MCP_LOCAL_ONLY: "0"
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - origo-data:/data
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    # No confiar en una IP de gateway Docker variable ni en '*'. El proxy HTTPS
+    # vive en el host; BASE_URL fija el origen para CSRF y cookies seguras.
+    command:
+      - uvicorn
+      - app.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --no-proxy-headers
+      - --no-access-log
+      - --no-server-header
+
+volumes:
+  origo-data:

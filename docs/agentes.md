@@ -29,45 +29,72 @@ Tools de lectura: `get_overview`, `list_transactions`, `get_debts`, `get_due_pay
 `add_to_home_list`, `toggle_home_item`, `add_subscription`, `mark_subscription_charged`,
 `set_subscription_active`, `delete_transaction`. Prompt: `weekly_review`.
 
-## Hermes por Telegram
+## Hermes como compañero
 
-Hermes corre en el mismo server que Origo, habla con vos por un bot de Telegram y usa Origo por
-MCP en `127.0.0.1`, sin que `/mcp` quede publicado en internet.
+Hermes es el agente que uso con Origo, pero Origo no lo necesita: **la web sigue funcionando
+completa si Hermes se cae o no lo instalás**. Esta guía no instala Hermes ni toca su
+configuración: solo conecta uno que ya tengas. Cualquier otro cliente MCP sirve igual.
 
-**En Origo** (`/etc/origo/origo.env`), y reiniciá el servicio:
+| Dónde corre Hermes | En Origo | URL del MCP |
+|---|---|---|
+| Misma máquina, Origo con systemd | `MCP_LOCAL_ONLY=1` + `MCP_TOKEN` | `http://127.0.0.1:8000/mcp` |
+| Otra máquina | `MCP_LOCAL_ONLY=0` + `MCP_TOKEN` dedicado | HTTPS privado, p. ej. [Tailscale](tailscale.md) o tu proxy |
+| Origo en Docker (incluso con Hermes en el host) | `MCP_LOCAL_ONLY=0` + `MCP_TOKEN` | `http://127.0.0.1:8000/mcp` |
 
-```
-MCP_TOKEN=<python3 -c "import secrets; print(secrets.token_urlsafe(48))">
-MCP_LOCAL_ONLY=1
-```
+`deploy/configure.py` arma esos valores con `--mcp-scope local|remote`. Docker exige `remote`:
+las llamadas llegan desde la red de Docker, no desde loopback.
 
-Con `MCP_LOCAL_ONLY=1`, `/mcp` responde 404 a todo lo que llega por el túnel o desde otra IP. El
-ejemplo de `deploy/cloudflared-config.example.yml` además corta `/mcp` en Cloudflare: son dos
-barreras independientes.
+Con `MCP_LOCAL_ONLY=1`, `/mcp` responde 404 a todo lo que llega por un proxy, túnel o desde
+otra IP. Con `MCP_LOCAL_ONLY=0` el bearer es la única barrera: restringí quién llega a la URL
+(ACL de Tailscale, firewall) y, si no querés MCP remoto, cortá `/mcp` en el proxy (ejemplos en
+[despliegue.md](despliegue.md)). El token es de dueño: nunca para invitados.
 
-**El bot.** En @BotFather: `/newbot`, después `/setjoingroups` → *Disable* (nadie lo puede sumar a
-un grupo) y `/setprivacy` → *Enable*. Tu ID numérico te lo da @userinfobot.
+### Conectar Hermes sin pisar su configuración
 
-**En Hermes**, con el usuario que lo corre:
-
-1. `~/.hermes/.env` (y `chmod 600`):
+1. Prepará el archivo privado con el usuario que corre Hermes (no con root):
+   ```bash
+   umask 077
+   mkdir -p ~/.hermes
+   touch ~/.hermes/.env
+   chmod 600 ~/.hermes/.env
    ```
-   TELEGRAM_BOT_TOKEN=<token de BotFather>
-   TELEGRAM_ALLOWED_USERS=<tu ID numérico>
-   ```
-   No definas `TELEGRAM_GROUP_ALLOWED_USERS` ni `TELEGRAM_GROUP_ALLOWED_CHATS`. Sin lista de
-   permitidos Hermes rechaza a todos, así que un error acá cierra, no abre.
-2. Copiá `hermes/config.example.yaml` dentro de `~/.hermes/config.yaml`, poné el `MCP_TOKEN` y tu
-   ID, y `chmod 600 ~/.hermes/config.yaml`. Deja la lista de tools cerrada y suma el skill desde
-   `/opt/origo/hermes/skills`, así se actualiza con cada `git pull`.
-3. `hermes gateway` (o instalalo como servicio) y mandale "¿cómo vengo este mes?" al bot.
-   Si no ve las tools, `/reload-mcp`.
+   En un editor local, agregá o actualizá **una sola** entrada `ORIGO_MCP_TOKEN` con el
+   `MCP_TOKEN` de Origo. Conservá las demás variables. Si está en otra máquina, transferí el
+   secreto por un canal seguro (por ejemplo tu gestor de contraseñas), nunca por chat con
+   un agente, logs, argumentos de comandos ni un archivo versionado.
+2. Hacé una copia de `~/.hermes/config.yaml`, abrilo y sumá **solo** la clave
+   `mcp_servers.origo` de [`hermes/config.example.yaml`](../hermes/config.example.yaml). Si ya
+   tenés `mcp_servers`, agregá `origo` adentro; no reemplaces el archivo.
+3. La doc oficial de Hermes ([referencia](https://github.com/NousResearch/hermes-agent/blob/main/website/docs/reference/mcp-config-reference.md),
+   [guía](https://github.com/NousResearch/hermes-agent/blob/main/website/docs/user-guide/features/mcp.md))
+   documenta `${VAR}` en `url` y `headers`, resuelto desde `~/.hermes/.env`, y que falla
+   cerrado si la variable no existe. Podés usar `Authorization: "Bearer ${ORIGO_MCP_TOKEN}"` y
+   no dejar el token en el YAML. Si tu versión no lo resuelve, pegá el token en el YAML
+   (`chmod 600`). Esta guía no lo probó con una versión concreta.
+4. En una sesión de Hermes corré `/reload-mcp` y pedile "¿cómo vengo este mes?".
+
+`tools.include` es una lista cerrada: las tools nuevas de Origo no aparecen hasta que las
+sumes. Para que no pueda borrar, sacá `delete_transaction`.
+
+### Skill y recordatorios
 
 El skill `hermes/skills/origo/SKILL.md` le enseña qué tool usar para cada cosa, a confirmar
-cada alta con su id y a no borrar nada sin un "sí" tuyo. Para avisos de vencimientos, pedile
-"todos los días a las 9 avisame las cuotas que vencen en 3 días" y arma un cron a Telegram.
+cada alta con su id y a no borrar nada sin un "sí" tuyo. Si Hermes corre en otra PC, copiá
+esa carpeta allá. Para avisos, pedile "todos los días a las 9 avisame las cuotas que vencen en 3 días".
 
-**Qué tan privado es.** Nadie más puede hablarle al bot y Origo no se expone. Pero un chat con
-un bot de Telegram no tiene cifrado de punta a punta: Telegram guarda los mensajes en sus
-servidores, y el proveedor del modelo que use Hermes ve lo que le pasás. Si querés que los datos
-no salgan de casa, usá un modelo local en Hermes; Telegram igual ve los mensajes del chat.
+### Telegram (opcional)
+
+Si Hermes te atiende por Telegram: en @BotFather `/newbot`, después `/setjoingroups` → *Disable*
+y `/setprivacy` → *Enable*. Tu ID numérico te lo da @userinfobot. En `~/.hermes/.env` van
+`TELEGRAM_BOT_TOKEN` y `TELEGRAM_ALLOWED_USERS=<tu ID>`; no definas
+`TELEGRAM_GROUP_ALLOWED_USERS` ni `TELEGRAM_GROUP_ALLOWED_CHATS`. Verificá para tu versión la política de acceso del bot y probá que un usuario no permitido
+quede rechazado antes de usar datos reales; estas claves no están verificadas por los tests de Origo.
+
+### Qué tan privado es
+
+El MCP en loopback no sale de la máquina. Entre nodos Tailscale puede cruzar internet,
+pero viaja cifrado; no confundir red privada con ausencia de tránsito por internet. Pero Telegram no cifra de punta
+a punta y guarda los mensajes en sus servidores, y un modelo en la nube ve lo que Hermes le
+pasa. Si querés que los datos no salgan de tu red, usá un **modelo local** en Hermes y no uses
+Telegram. Telegram, los modelos cloud, Tailscale y Cloudflare son opcionales y varios son
+servicios propietarios: Origo + systemd + tu proxy HTTPS + un modelo local no depende de ninguno.

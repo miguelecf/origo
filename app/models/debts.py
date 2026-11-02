@@ -16,7 +16,7 @@ class Debt(Base):
     direction: Mapped[str] = mapped_column(String(12))  # owed_to_me | i_owe
     # Con quién: una persona, una tarjeta de crédito o una entidad (Mercado Pago, un banco...).
     kind: Mapped[str] = mapped_column(String(12), default="person", server_default="person")
-    brand: Mapped[str | None] = mapped_column(String(32))  # logo en static/brands/<brand>.png
+    brand: Mapped[str | None] = mapped_column(String(32))  # identificador del catálogo de entidades
     description: Mapped[str] = mapped_column(String(200), default="")
     total: Mapped[Decimal] = mapped_column(Numeric(14, 2))
     # Une los dos lados de una tarjeta prestada: lo que me debe la persona y lo que le debo al banco.

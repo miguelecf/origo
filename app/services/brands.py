@@ -1,4 +1,7 @@
-"""Tarjetas y entidades con logo propio (los archivos están en static/brands/<slug>.png)."""
+"""Nombres y slugs estables de tarjetas y entidades, sin logos de terceros.
+
+La UI usa iniciales neutras; los slugs siguen identificando los datos históricos.
+"""
 
 # Primero las que usa el dueño.
 CARDS = {

@@ -177,6 +177,49 @@ def test_https_cookies_and_hsts(monkeypatch, db, owner):
         assert client.get("/").status_code == 200
 
 
+@pytest.mark.parametrize("base_url", ["https://server.tail123.ts.net", "https://origo.example.com"])
+def test_https_proxy_requires_login_and_preserves_origin(monkeypatch, db, owner, base_url):
+    from app.core.database import get_db
+    from app.main import create_app
+    from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
+
+    monkeypatch.setattr(settings, "BASE_URL", base_url)
+    app = create_app()
+    app.dependency_overrides[get_db] = lambda: db
+    proxy = ProxyHeadersMiddleware(app, trusted_hosts="127.0.0.1")
+    headers = {"Origin": base_url, "X-Forwarded-For": "100.64.0.20",
+               "X-Forwarded-Proto": "https", "Tailscale-User-Login": "owner@example.com"}
+    with TestClient(proxy, base_url=base_url, client=("127.0.0.1", 40000), headers=headers) as client:
+        # La identidad de Tailscale no reemplaza el login de Origo.
+        assert client.get("/plata", follow_redirects=False).headers["location"] == "/login"
+        response = login(client)
+        assert response.status_code == 303
+        assert "Secure" in response.headers["set-cookie"]
+        assert client.get("/plata").status_code == 200
+        assert client.post("/super/casa", data={"text": "pan"}).status_code == 200
+        assert client.post("/super/casa", data={"text": "pan"}, headers={"Origin": "https://evil.example"}).status_code == 403
+        link = client.post("/invitados", data={"name": "Invitado", "can_lists": "true"})
+        assert f"{base_url}/g/" in link.text
+
+
+def test_https_redirect_behind_untrusted_docker_gateway(monkeypatch, db):
+    from app.core.database import get_db
+    from app.main import create_app
+
+    monkeypatch.setattr(settings, "BASE_URL", "https://origo.example.com:8443")
+    app = create_app()
+    app.dependency_overrides[get_db] = lambda: db
+    with TestClient(app, base_url="http://origo.example.com:8443", client=("172.18.0.1", 40000)) as client:
+        response = client.get("/login/", follow_redirects=False)
+        assert response.status_code == 307
+        assert response.headers["location"] == "https://origo.example.com:8443/login"
+        # Los headers no pueden cambiar la autoridad elegida por el operador.
+        response = client.get("/login/", headers={"X-Forwarded-Host": "evil.example", "X-Forwarded-Proto": "http"}, follow_redirects=False)
+        assert response.headers["location"] == "https://origo.example.com:8443/login"
+        response = client.get("http://127.0.0.1:8000/login/", follow_redirects=False)
+        assert response.headers["location"] == "http://127.0.0.1:8000/login"
+
+
 @pytest.mark.parametrize("secret", ["", "dev-secret-change-me", "x" * 64, "example-secret-change-me-" * 3])
 def test_reject_weak_production_secret(secret):
     with pytest.raises(ValueError, match="SECRET_KEY"):

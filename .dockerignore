@@ -10,5 +10,21 @@ __pycache__
 .pytest_cache
 .ruff_cache
 .mcp.json
+# Configuración real de operadores, llaves y snapshots nunca entran al contexto.
+*.env
+*.env.*
+!*.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.sqlite
+*.sqlite3
+hermes/config.yaml
+hermes/config.yml
+secrets
+backups
+data
+.hermes
 tests
 scripts

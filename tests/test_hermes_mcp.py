@@ -4,12 +4,14 @@ import datetime as dt
 import pytest
 from fastapi.testclient import TestClient
 from fastmcp import Client
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.core.clock import today
 from app.core.config import settings
 from app.core.database import init_db
 from app.main import create_app
 from app.mcp_server import mcp
+from app.web.security import PROXY_HEADERS
 
 TOKEN = "a-secure-static-token-0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 INIT = {"jsonrpc": "2.0", "id": 1, "method": "initialize",
@@ -32,11 +34,32 @@ def test_local_only_accepts_loopback(local_only):
     (("203.0.113.9", 40000), {}),
     (("127.0.0.1", 40000), {"CF-Connecting-IP": "203.0.113.9"}),
     (("127.0.0.1", 40000), {"X-Forwarded-For": "203.0.113.9"}),
+    (("100.64.0.20", 40000), {}),
+    (("fd7a:115c:a1e0::123", 40000), {}),
 ])
 def test_local_only_hides_mcp_from_tunnel(local_only, peer, extra):
     with TestClient(create_app(), base_url="http://127.0.0.1:8000", client=peer) as client:
         for path in ("/mcp", "/mcp/", "/.well-known/oauth-protected-resource"):
             assert client.post(path, headers=AUTH | extra, json=INIT).status_code == 404
+
+
+@pytest.mark.parametrize("header", PROXY_HEADERS)
+def test_local_only_rejects_each_proxy_indicator(local_only, header):
+    with TestClient(create_app(), base_url="http://127.0.0.1:8000", client=("127.0.0.1", 40000)) as client:
+        assert client.post("/mcp", headers=AUTH | {header: "proxy"}, json=INIT).status_code == 404
+
+
+@pytest.mark.parametrize("local_only_enabled,expected", [(True, 404), (False, 200)])
+def test_tailscale_proxy_respects_mcp_scope(monkeypatch, local_only_enabled, expected):
+    monkeypatch.setattr(settings, "MCP_TOKEN", TOKEN)
+    monkeypatch.setattr(settings, "MCP_LOCAL_ONLY", local_only_enabled)
+    app = ProxyHeadersMiddleware(create_app(), trusted_hosts="127.0.0.1")
+    # También representa un nodo etiquetado: Serve no agrega identidad, sí X-Forwarded-*.
+    forwarded = {"X-Forwarded-For": "100.64.0.20", "X-Forwarded-Proto": "https"}
+    with TestClient(app, base_url="http://127.0.0.1:8000", client=("127.0.0.1", 40000)) as client:
+        assert client.post("/mcp", headers=AUTH | forwarded, json=INIT).status_code == expected
+        if not local_only_enabled:
+            assert client.post("/mcp", headers=forwarded, json=INIT).status_code == 401
 
 
 def test_local_only_off_keeps_remote_mcp(monkeypatch):

@@ -18,7 +18,7 @@ class Subscription(Base):
     period: Mapped[str] = mapped_column(String(10), default="monthly")  # monthly | yearly
     category: Mapped[str] = mapped_column(String(40), default="Otros")
     next_charge: Mapped[dt.date] = mapped_column(index=True)
-    # Con qué se paga: marca del catálogo (static/brands/<paid_with>.png) o nada.
+    # Con qué se paga: marca del catálogo (app/services/brands.py) o nada.
     paid_with: Mapped[str | None] = mapped_column(String(32))
     note: Mapped[str] = mapped_column(String(200), default="")
     active: Mapped[bool] = mapped_column(default=True)

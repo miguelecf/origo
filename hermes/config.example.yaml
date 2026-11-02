@@ -1,13 +1,31 @@
-# Fragmento para ~/.hermes/config.yaml del usuario que corre Hermes en el server de casa.
-# Mezclalo con lo que ya tengas y protegé el archivo: chmod 600 ~/.hermes/config.yaml
+# Fragmento para ~/.hermes/config.yaml. NO reemplaza tu configuración: sumá la clave
+# `mcp_servers.origo` a la que ya tenés (guía de merge en docs/agentes.md).
+# Todo lo que dice PEGAR_ACA_* es un placeholder: ponés tus valores, no los subas a Git.
+# Protegé el archivo real: chmod 600 ~/.hermes/config.yaml
+#
+# Forma según la doc oficial de Hermes (reference/mcp-config-reference.md y
+# user-guide/features/mcp.md): `url`, `headers`, `timeout` y `tools.include`.
 
 mcp_servers:
   origo:
-    # Origo y Hermes en la misma máquina: la llamada nunca sale de 127.0.0.1.
-    # En Origo: MCP_TOKEN=<token> y MCP_LOCAL_ONLY=1 (ver docs/agentes.md).
+    # Elegí UNA url según dónde corre Hermes (en Origo: MCP_TOKEN=<token>):
+    #
+    # a) Hermes en la misma máquina que Origo (systemd). En Origo: MCP_LOCAL_ONLY=1.
     url: "http://127.0.0.1:8000/mcp"
+    #
+    # b) Hermes en otra máquina: HTTPS privado (por ejemplo Tailscale Serve, ver
+    #    docs/tailscale.md) o tu proxy propio. En Origo: MCP_LOCAL_ONLY=0 y el bearer es la
+    #    única barrera, así que restringí quién llega a esa URL.
+    # url: "https://PEGAR_ACA_EL_HOST_DE_ORIGO/mcp"
+    #
+    # c) Origo en Docker, aunque Hermes esté en el mismo host: usá la (a) pero con
+    #    MCP_LOCAL_ONLY=0 en Origo (el contenedor no ve a Hermes como loopback).
     headers:
-      Authorization: "Bearer PEGAR_ACA_EL_MCP_TOKEN"
+      Authorization: "Bearer ${ORIGO_MCP_TOKEN}"
+      # La referencia de Hermes documenta
+      # `${VAR}` en `url` y `headers`, resuelta desde ~/.hermes/.env, y falla cerrado si la
+      # variable no existe. Probalo en tu versión antes de depender de eso:
+      # Si tu versión no lo soporta, actualizá Hermes o usá un archivo privado 0600.
     timeout: 30
     tools:
       # Lista cerrada: si Origo suma tools nuevas, Hermes no las ve hasta que las agregues acá.
@@ -40,15 +58,18 @@ mcp_servers:
         # Para que no pueda borrar nada, sacá esta línea.
         - delete_transaction
 
-skills:
-  external_dirs:
-    # El skill vive en el repo, así se actualiza con cada git pull.
-    - /opt/origo/hermes/skills
-
-gateway:
-  platforms:
-    telegram:
-      extra:
-        # Tu ID numérico de Telegram (te lo da @userinfobot), no tu @usuario.
-        allow_from:
-          - "PEGAR_ACA_TU_ID_DE_TELEGRAM"
+# Opcionales. No están en las dos páginas de MCP de la doc oficial: confirmá las claves en la
+# doc de tu versión de Hermes antes de activarlos, y no pises lo que ya tengas.
+#
+# skills:
+#   external_dirs:
+#     # Carpeta con el skill de este repo. Si Hermes corre en otra PC, copiá hermes/skills/.
+#     - /opt/origo/hermes/skills
+#
+# gateway:
+#   platforms:
+#     telegram:
+#       extra:
+#         # Tu ID numérico de Telegram (te lo da @userinfobot), no tu @usuario.
+#         allow_from:
+#           - "PEGAR_ACA_TU_ID_DE_TELEGRAM"

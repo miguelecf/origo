@@ -122,6 +122,12 @@ Issues y PRs son bienvenidos, pero es un proyecto personal: lo mantengo según l
 Antes de aportar mirá [CONTRIBUTING.md](CONTRIBUTING.md); las vulnerabilidades se reportan
 como indica [SECURITY.md](SECURITY.md).
 
+## Página de presentación
+
+La [página de Origo](https://miguelecf.github.io/origo/) vive en `docs/index.html`,
+con sus estilos, capturas y fuentes en `docs/`. GitHub Pages publica desde `main`,
+carpeta `/docs`; no requiere compilación ni ejecutar la aplicación.
+
 ## Licencia
 
 [MIT](LICENSE). Las tipografías Archivo y Outfit van con su licencia OFL en `app/static/fonts/`.

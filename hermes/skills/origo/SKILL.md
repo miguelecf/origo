@@ -1,7 +1,7 @@
 ---
 name: origo
-description: Registrar y revisar la vida del usuario en Origo (plata, suscripciones, deudas y cuotas, peso, comidas, sueño, ánimo, súper) con las tools MCP mcp_origo_*. Usar cuando el usuario cuente un gasto o ingreso, una suscripción, una deuda, un pago de cuota, lo que comió, su peso, cómo durmió, qué falta en casa, o pida un resumen, vencimientos o la revisión semanal.
-version: 1.0.0
+description: Registrar y revisar la vida del usuario en Origo (plata, suscripciones, deudas y cuotas, peso y composición, comidas, plan de dieta, rutina de entreno, sueño, ánimo, súper) con las tools MCP mcp_origo_*. Usar cuando el usuario cuente un gasto o ingreso, una suscripción, una deuda, un pago de cuota, lo que comió, su peso o lo que dio la balanza, un cambio en su plan de comidas o su rutina, cómo durmió, qué falta en casa, o pida un resumen, vencimientos o la revisión semanal.
+version: 1.1.0
 metadata:
   hermes:
     tags: [origo, finanzas, salud, telegram]
@@ -24,8 +24,15 @@ no responde. No inventes datos.
   que cambia el registro: monto, si es gasto o ingreso, a quién se le debe, cuántas cuotas.
 - Después de cada alta, confirmá en una línea qué guardaste, con el id: "Anotado: gasto de $ 12.500 en
   Súper (#231)". Así se puede corregir.
-- **Borrar o desmarcar** (`delete_transaction`, `set_installment_paid` con `paid=false`, rechazar un aviso
-  de pago) solo con un "sí" explícito del usuario después de mostrarle qué vas a tocar.
+- **Borrar o desmarcar** (`delete_transaction`, `delete_routine_item`, `delete_weight_milestone`,
+  `set_installment_paid` con `paid=false`, rechazar un aviso de pago) solo con un "sí" explícito del
+  usuario después de mostrarle qué vas a tocar.
+- **El plan no es lo hecho.** Los objetivos de dieta no son comidas consumidas (eso es `log_food`), y
+  cargar la rutina no marca entrenamientos: eso lo marca el usuario en la app. Nunca inventes un
+  entrenamiento, una comida ni una medición.
+- **Origo es la memoria; vos sos quien calcula.** Si el usuario te pide calorías o macros del plan,
+  calculalos vos, decile de dónde salen y guardá el resultado con `set_diet_targets`. No son
+  recomendaciones médicas: guardá lo que dice el plan del usuario, sin ajustarlo por tu cuenta.
 - Fechas en ISO (`YYYY-MM-DD`). "Ayer", "el viernes", etc. calculalos con el `today` que devuelve
   `get_overview`, no con tu reloj. Los rangos son `[from_date, to_date)`.
 - Nunca muestres tokens, links de invitados ni el `MCP_TOKEN`.
@@ -43,7 +50,14 @@ no responde. No inventes datos.
 | "¿Qué vence esta semana?" | `get_due_payments` (days 7) |
 | "Dormí 6 horas", "ánimo 3", "caminé 40 min" | `save_checkin` (lo que no mandes queda como estaba) |
 | "Almorcé milanesa con puré" | `log_food` |
-| "Peso 81,4" / "mi meta es 78" | `log_weight` / `set_weight_goal` |
+| "Peso 81,4" / "mi meta final es 78" | `log_weight` / `set_weight_goal` |
+| "La balanza dio 35,8 % de grasa y 64 % de músculo" | `log_weight` con `fat_pct`, `muscle_pct` (y `lean_kg`, `water_pct`, `visceral_fat` si los dio). Solo lo que dijo: no estimes el resto |
+| "Mi próximo objetivo es 105" | `add_weight_milestone`. **No** `set_weight_goal`: eso pisa la meta final |
+| "¿Qué tengo que comer?" / "cambiá la merienda" | `get_diet_plan`; para sumar sin pisar `append_to_diet_slot`; para reescribir, leé y mandá el texto entero a `set_diet_slot` |
+| "Mi plan es 2200 kcal y 180 de proteína", "tomo creatina" | `set_diet_targets` (reglas y suplementos, uno por renglón) |
+| "¿Qué entreno hoy?" / "agregá press banca 4×8–12 el lunes" | `get_routine` / `add_routine_item` (`reps` 8, `reps_max` 12) |
+| "Subí la sentadilla a 62,5" | `get_routine` para el id, después `update_routine_item` |
+| "¿Qué hice esta semana en el gym?" | `get_workout_history` |
 | "Me suscribí a Claude, 20 dólares por mes" | `add_subscription` (currency `USD`, category `IA`, `next_charge` = fecha del próximo cobro) |
 | "Se cobró Netflix", "me cobraron ChatGPT 26.000 pesos" | `get_subscriptions` para el id, después `mark_subscription_charged` (en USD, `amount_ars` obligatorio) |
 | "¿Cuánto gasto en suscripciones?" | `get_subscriptions` (`monthly_cost` separa ARS y USD) |
@@ -71,6 +85,19 @@ deudas que vencen en 7 días, y un dato de salud si hay algo raro (poco sueño, 
 **Revisión semanal.** Usá el prompt MCP `weekly_review` de Origo si está disponible. Si no, seguí sus
 pasos: overview, check-ins de 14 días, comidas de 7, movimientos del mes, deudas y peso de 90 días;
 máximo 3 fallas concretas con su dato y una acción chica para cada una.
+
+**Rutina A/B.** La app tiene una rutina fija por día de la semana y no rota sola. Si el plan alterna
+(A-B-A una semana, B-A-B la siguiente, con al menos un día de descanso entre entrenamientos), la
+organizás vos: al empezar la semana, proponé qué día va cada rutina, esperá el "sí" y recién ahí
+cambiá los días con las tools de rutina. Poné el nombre en el título del día (`set_routine_day_title`,
+ej. "Rutina A"). No programes esto como automatización sin que el usuario lo pida.
+
+**Cambios en el plan.** Antes de editar, leé (`get_diet_plan` o `get_routine`). Después de editar,
+confirmá en una línea qué cambió. Las tools de dieta devuelven `previous_text`: si el usuario dice
+"deshacé", volvé a guardar ese texto.
+
+**Si la web pide login.** El MCP y la web se autentican por separado: que la web pida contraseña en
+un navegador no significa que el MCP esté caído. Decíselo así al usuario.
 
 **Suscripciones.** Pesos y dólares no se suman entre sí: informalos por separado. Marcar un cobro ya lo
 anota como gasto en Plata (categoría Suscripciones) y corre el próximo cobro; no llames además a

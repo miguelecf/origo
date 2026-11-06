@@ -40,6 +40,10 @@ mcp_servers:
         - get_market_trips
         - get_price_history
         - get_home_list
+        - get_weight_goals
+        - get_diet_plan
+        - get_routine
+        - get_workout_history
         - add_transaction
         - add_debt
         - lend_card
@@ -55,8 +59,18 @@ mcp_servers:
         - add_subscription
         - mark_subscription_charged
         - set_subscription_active
-        # Para que no pueda borrar nada, sacá esta línea.
+        - add_weight_milestone
+        - set_diet_slot
+        - append_to_diet_slot
+        - set_diet_targets
+        - add_routine_item
+        - update_routine_item
+        - move_routine_item
+        - set_routine_day_title
+        # Para que no pueda borrar nada, sacá estas tres líneas.
         - delete_transaction
+        - delete_weight_milestone
+        - delete_routine_item
 
 # Opcionales. No están en las dos páginas de MCP de la doc oficial: confirmá las claves en la
 # doc de tu versión de Hermes antes de activarlos, y no pises lo que ya tengas.

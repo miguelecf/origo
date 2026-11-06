@@ -13,7 +13,7 @@ from fastmcp import FastMCP
 
 from app.core.clock import month_bounds, today
 from app.core.database import SessionLocal, init_db
-from app.services import body, brands, checkins, debts, finance, guests, lists, overview, subscriptions
+from app.services import body, brands, checkins, debts, diet, finance, guests, lists, overview, subscriptions, training
 
 INSTRUCTIONS = """\
 Registro personal de la vida de una persona: plata, deudas, peso, comidas, sueño, ánimo,
@@ -22,6 +22,8 @@ Los rangos son [from_date, to_date): incluye el inicio y excluye el final.
 Para analizar, empezá por get_overview y después bajá al detalle que necesites.
 Las tools de escritura guardan de verdad: confirmá montos y fechas antes de llamarlas, y para
 borrar algo pedí siempre confirmación explícita.
+El plan (dieta y rutina) no es lo hecho: los objetivos del plan no son comidas consumidas, y la
+rutina no marca entrenamientos como realizados. La rutina es fija por día de la semana: no rota sola.
 """
 
 
@@ -91,7 +93,41 @@ def _subscription(s) -> dict:
 
 
 def _weight(w) -> dict | None:
-    return {"date": w.date.isoformat(), "kg": _num(w.kg)} if w else None
+    if not w:
+        return None
+    data = {"id": w.id, "date": w.date.isoformat(), "kg": _num(w.kg)}
+    for field in body.COMPOSITION:
+        value = getattr(w, field)
+        if value is not None:
+            data[field] = value if field == "visceral_fat" else _num(value)
+    return data
+
+
+def _milestone(m) -> dict:
+    return {"id": m.id, "kg": _num(m.kg), "note": m.note}
+
+
+def _routine_item(i) -> dict:
+    return {"id": i.id, "weekday": i.weekday, "exercise": i.exercise.name, "sets": i.sets, "reps": i.reps,
+            "reps_max": i.reps_max, "reps_text": training.format_reps(i.reps, i.reps_max), "kg": _num(i.kg),
+            "position": i.position}
+
+
+def _day(plan: dict) -> dict:
+    return {"weekday": plan["weekday"], "name": plan["name"], "title": plan["title"],
+            "items": [_routine_item(i) for i in plan["items"]]}
+
+
+def _targets(t) -> dict:
+    return {"kcal": t.kcal, "protein_g": t.protein_g, "carbs_g": t.carbs_g, "fat_g": t.fat_g,
+            "rules": t.rules or "", "supplements": t.supplements or ""}
+
+
+def _clear(fields: list[str] | None, allowed) -> set[str]:
+    fields = set(fields or [])
+    if unknown := fields - set(allowed):
+        raise ValueError(f"No se puede limpiar: {', '.join(sorted(unknown))}")
+    return fields
 
 
 # --- Lectura ---
@@ -134,6 +170,7 @@ def get_overview(from_date: str | None = None, to_date: str | None = None) -> di
             "weight": {
                 "start": _weight(w["start"]), "current": _weight(w["current"]),
                 "30_days_ago": _weight(w["month_ago"]), "goal_kg": _num(w["goal"]),
+                "next_milestone": _milestone(w["next_milestone"]) if w["next_milestone"] else None,
             },
             "last_7_days": {k: _num(v) if k != "days" else v for k, v in o["last_7_days"].items()},
             "today_checkin_done": o["today"]["checkin"] is not None,
@@ -169,7 +206,8 @@ def get_debts(include_settled: bool = False) -> list[dict]:
 
 @mcp.tool
 def get_weight_series(from_date: str | None = None, to_date: str | None = None) -> list[dict]:
-    """Pesos registrados (kg). Sin fechas, todo el historial."""
+    """Pesos registrados (kg), con la composición de la balanza si se cargó ese día
+    (fat_pct, muscle_pct, lean_kg, water_pct, visceral_fat). Sin fechas, todo el historial."""
     start = dt.date.fromisoformat(from_date) if from_date else None
     end = dt.date.fromisoformat(to_date) if to_date else None
     with _db() as db:
@@ -247,10 +285,22 @@ def log_food(text: str) -> dict:
 
 
 @mcp.tool
-def log_weight(kg: float, date: str | None = None) -> dict:
-    """Registra el peso del día (si ya había uno ese día, lo reemplaza)."""
+def log_weight(
+    kg: float, date: str | None = None, fat_pct: float | None = None, muscle_pct: float | None = None,
+    lean_kg: float | None = None, water_pct: float | None = None, visceral_fat: int | None = None,
+) -> dict:
+    """Registra el peso del día y, si los hay, los valores de la balanza de bioimpedancia:
+    fat_pct (% grasa), muscle_pct (% músculo), lean_kg (masa magra), water_pct (% agua) y
+    visceral_fat (índice de grasa visceral). Si ya había un registro ese día, reemplaza el peso y
+    solo los valores que mandes: lo que no mandes queda como estaba. Mandá solo lo que dio la
+    balanza o dijo el usuario; no estimes valores."""
+    def dec(value):
+        return Decimal(str(value)) if value is not None else None
     with _db() as db:
-        w = body.log_weight(db, Decimal(str(kg)), dt.date.fromisoformat(date) if date else None)
+        w = body.log_weight(
+            db, Decimal(str(kg)), _date(date), fat_pct=dec(fat_pct), muscle_pct=dec(muscle_pct),
+            lean_kg=dec(lean_kg), water_pct=dec(water_pct), visceral_fat=visceral_fat,
+        )
         return _weight(w)
 
 
@@ -358,7 +408,8 @@ def save_checkin(
 
 @mcp.tool
 def set_weight_goal(kg: float | None = None) -> dict:
-    """Fija la meta de peso en kg. Sin valor, la quita."""
+    """Fija la meta FINAL de peso en kg. Sin valor, la quita. Para un escalón intermedio
+    ("mi próximo objetivo es 105") usá add_weight_milestone: esta tool pisa la meta final."""
     with _db() as db:
         body.set_goal(db, Decimal(str(kg)) if kg is not None else None)
         return {"goal_kg": _num(body.get_goal(db))}
@@ -416,6 +467,176 @@ def set_subscription_active(subscription_id: int, active: bool) -> dict:
     """Pausa (active=false) o reactiva una suscripción. Pausada no suma al costo mensual."""
     with _db() as db:
         return _subscription(subscriptions.set_active(db, subscription_id, active))
+
+
+# --- Peso: meta e hitos ---
+
+@mcp.tool
+def get_weight_goals() -> dict:
+    """La meta final de peso y los hitos intermedios (de mayor a menor), con el próximo a alcanzar."""
+    with _db() as db:
+        current = body.weight_series(db)[-1:] or [None]
+        nxt = body.next_milestone(db, current[0].kg if current[0] else None)
+        return {"goal_kg": _num(body.get_goal(db)), "current": _weight(current[0]),
+                "milestones": [_milestone(m) for m in body.milestones(db)],
+                "next_milestone": _milestone(nxt) if nxt else None}
+
+
+@mcp.tool
+def add_weight_milestone(kg: float, note: str = "") -> dict:
+    """Suma un hito intermedio de peso (ej. 105 kg camino a la meta final). No cambia la meta final."""
+    with _db() as db:
+        return _milestone(body.add_milestone(db, Decimal(str(kg)), note))
+
+
+@mcp.tool
+def delete_weight_milestone(milestone_id: int) -> dict:
+    """Borra un hito (id de get_weight_goals). Solo con confirmación explícita del dueño."""
+    with _db() as db:
+        return {"deleted": milestone_id if body.delete_milestone(db, milestone_id) else None}
+
+
+# --- Dieta (Cuerpo → Dieta) ---
+
+@mcp.tool(description=(
+    "Plan de alimentación tal como se ve en Cuerpo → Dieta: el texto de cada momento del día "
+    f"(slot: {', '.join(diet.SLOT_KEYS)}) y los objetivos del plan (kcal, macros, reglas, suplementos). "
+    "Es el plan, no lo que se comió: lo comido sale de get_food_log."
+))
+def get_diet_plan() -> dict:
+    with _db() as db:
+        return {
+            "slots": [{"slot": s["key"], "name": s["name"], "from": s["from"].strftime("%H:%M"), "text": s["text"]}
+                      for s in diet.plan(db)],
+            "current_slot": diet.current_slot(),
+            "targets": _targets(diet.targets(db)),
+        }
+
+
+@mcp.tool(description=(
+    f"Reemplaza el texto completo de un momento del plan (slot: {', '.join(diet.SLOT_KEYS)}), una opción "
+    f"por renglón, hasta {diet.MAX_TEXT} caracteres. Pisa lo que había: leé antes con get_diet_plan y "
+    "mandá el texto entero. Devuelve el texto anterior para poder deshacer. Para sumar sin pisar, "
+    "append_to_diet_slot."
+))
+def set_diet_slot(slot: str, text: str) -> dict:
+    with _db() as db:
+        previous = diet.save(db, slot, text)
+        current = next(s["text"] for s in diet.plan(db) if s["key"] == slot)
+        return {"slot": slot, "previous_text": previous, "text": current}
+
+
+@mcp.tool(description=(
+    f"Suma renglones al final de un momento del plan (slot: {', '.join(diet.SLOT_KEYS)}) sin tocar lo "
+    "que ya había. Los renglones que ya están no se repiten."
+))
+def append_to_diet_slot(slot: str, lines: str) -> dict:
+    with _db() as db:
+        previous = diet.append(db, slot, lines)
+        current = next(s["text"] for s in diet.plan(db) if s["key"] == slot)
+        return {"slot": slot, "previous_text": previous, "text": current}
+
+
+@mcp.tool
+def set_diet_targets(
+    kcal: int | None = None, protein_g: int | None = None, carbs_g: int | None = None, fat_g: int | None = None,
+    rules: str | None = None, supplements: str | None = None, clear: list[str] | None = None,
+) -> dict:
+    """Objetivos diarios del plan: kcal, proteína, carbohidratos y grasas en gramos, más reglas y
+    suplementos en texto (uno por renglón; rules/supplements reemplazan el texto entero). Solo
+    cambia lo que mandes; para borrar un campo, ponelo en `clear` (ej. ["kcal"]). No son comidas
+    consumidas ni una recomendación médica: guardá lo que dice el plan del usuario."""
+    with _db() as db:
+        values = {k: v for k, v in {"kcal": kcal, "protein_g": protein_g, "carbs_g": carbs_g, "fat_g": fat_g,
+                                     "rules": rules, "supplements": supplements}.items() if v is not None}
+        for field in _clear(clear, [*diet.TARGET_NUMBERS, *diet.TARGET_TEXTS]):
+            values[field] = None if field in diet.TARGET_NUMBERS else ""
+        previous = _targets(diet.targets(db))
+        return {"previous": previous, "targets": _targets(diet.set_targets(db, **values))}
+
+
+# --- Rutina (Entreno → Rutina) ---
+
+@mcp.tool
+def get_routine(weekday: int | None = None) -> dict:
+    """Rutina semanal tal como se ve en Entreno → Rutina. weekday 0 = lunes ... 6 = domingo; sin
+    weekday, la semana entera. Un día sin ejercicios es descanso. Es fija por día de semana: no
+    rota sola. reps_max no nulo significa rango (reps_text '8–12')."""
+    with _db() as db:
+        if weekday is not None:
+            return _day(training.day_plan(db, training._weekday(weekday)))
+        return {"today_weekday": today().weekday(), "days": [_day(d) for d in training.week(db)]}
+
+
+@mcp.tool
+def add_routine_item(
+    weekday: int, exercise: str, sets: int, reps: int, reps_max: int | None = None, kg: float | None = None,
+    allow_duplicate: bool = False,
+) -> dict:
+    """Agrega un ejercicio al final de un día de la rutina (0 = lunes). Para un rango de
+    repeticiones, reps es el mínimo y reps_max el máximo (8 y 12). Si el ejercicio ya está ese día
+    falla, salvo allow_duplicate=true. No lo marca como hecho."""
+    with _db() as db:
+        item = training.add_item(db, weekday, exercise, sets, reps, Decimal(str(kg)) if kg is not None else None,
+                                 reps_max=reps_max, allow_duplicate=allow_duplicate)
+        return _routine_item(item)
+
+
+@mcp.tool
+def update_routine_item(
+    item_id: int, sets: int | None = None, reps: int | None = None, reps_max: int | None = None,
+    kg: float | None = None, clear: list[str] | None = None,
+) -> dict:
+    """Cambia series, repeticiones o kilos de un ejercicio de la rutina (id de get_routine). Solo
+    cambia lo que mandes; para pasar de rango a fijo o quitar los kilos usá clear=["reps_max"] o
+    ["kg"]. El historial de lo ya hecho no cambia."""
+    changes = {k: v for k, v in {"sets": sets, "reps": reps, "reps_max": reps_max}.items() if v is not None}
+    if kg is not None:
+        changes["kg"] = Decimal(str(kg))
+    for field in _clear(clear, ["reps_max", "kg"]):
+        changes[field] = None
+    with _db() as db:
+        return _routine_item(training.update_item(db, item_id, **changes))
+
+
+@mcp.tool
+def move_routine_item(item_id: int, direction: str) -> dict:
+    """Sube (direction 'up') o baja ('down') un ejercicio dentro de su día. Devuelve el día."""
+    if direction not in ("up", "down"):
+        raise ValueError("direction es 'up' o 'down'")
+    with _db() as db:
+        training.move_item(db, item_id, -1 if direction == "up" else 1)
+        item = db.get(training.RoutineItem, item_id)
+        return _day(training.day_plan(db, item.weekday))
+
+
+@mcp.tool
+def delete_routine_item(item_id: int) -> dict:
+    """Saca un ejercicio de la rutina (id de get_routine). Lo ya hecho queda en el historial.
+    Solo con confirmación explícita del dueño, después de mostrarle qué vas a sacar."""
+    with _db() as db:
+        return {"deleted": item_id if training.delete_item(db, item_id) else None}
+
+
+@mcp.tool
+def set_routine_day_title(weekday: int, title: str) -> dict:
+    """Nombre de un día de la rutina (0 = lunes), ej. 'Rutina A' o 'Pecho y tríceps'. Vacío lo quita."""
+    with _db() as db:
+        training.set_title(db, weekday, title)
+        return _day(training.day_plan(db, weekday))
+
+
+@mcp.tool
+def get_workout_history(days: int = 30) -> list[dict]:
+    """Lo que se marcó como hecho en Entreno en los últimos `days` días (máx. 366), por sesión.
+    Solo lectura: marcar hecho es del usuario en la app."""
+    with _db() as db:
+        return [
+            {"date": day.isoformat(), "exercises": [
+                {"exercise": log.exercise.name, "sets": log.sets, "reps": log.reps, "reps_max": log.reps_max,
+                 "kg": _num(log.kg)} for log in logs]}
+            for day, logs in training.history(db, days=max(1, min(days, 366)))
+        ]
 
 
 @mcp.prompt

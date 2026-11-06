@@ -41,8 +41,9 @@
 </section>
 </div>
 
-<section class="block card">
+<section class="block card" id="peso">
   <h2>{{ ico('⚖️') }}Peso</h2>
+  {% include "partials/error.html" %}
   {% set w = summary %}
   {% if w.current %}
   <div class="weights">
@@ -52,13 +53,42 @@
     <div><small>🎯 Meta</small><b class="num">{{ w.goal | number if w.goal else "—" }}</b>
       {% if w.goal %}<small>faltan {{ (w.current.kg - w.goal) | abs | number }} kg</small>{% endif %}</div>
   </div>
+  {% if w.next_milestone %}
+  <p class="soft">🪜 Próximo hito: <b class="num">{{ w.next_milestone.kg | number }} kg</b>{% if w.next_milestone.note %} ({{ w.next_milestone.note }}){% endif %}, faltan {{ (w.current.kg - w.next_milestone.kg) | abs | number }} kg</p>
+  {% endif %}
+  {% set c = w.composition %}
+  {% if c %}
+  <div class="weights composition" aria-label="Composición del {{ c.date.strftime('%d/%m/%y') }}">
+    {% if c.fat_pct is not none %}<div><small>Grasa</small><b class="num">{{ c.fat_pct | number }} %</b></div>{% endif %}
+    {% if c.muscle_pct is not none %}<div><small>Músculo</small><b class="num">{{ c.muscle_pct | number }} %</b></div>{% endif %}
+    {% if c.lean_kg is not none %}<div><small>Masa magra</small><b class="num">{{ c.lean_kg | number }} kg</b></div>{% endif %}
+    {% if c.water_pct is not none %}<div><small>Agua</small><b class="num">{{ c.water_pct | number }} %</b></div>{% endif %}
+    {% if c.visceral_fat is not none %}<div><small>Visceral</small><b class="num">{{ c.visceral_fat }}</b></div>{% endif %}
+  </div>
+  <p class="soft"><small>Balanza, {{ c.date.strftime('%d/%m/%y') }}. Son lecturas aproximadas, no un diagnóstico.</small></p>
+  {% endif %}
   <canvas data-chart="weight" data-values='{{ chart | tojson }}' data-goal="{{ w.goal or '' }}" height="190" role="img" aria-label="Gráfico de peso"></canvas>
   {% endif %}
 
-  <form method="post" action="/cuerpo/peso" class="row">
-    <input name="kg" inputmode="decimal" placeholder="Peso de hoy en kg" required autocomplete="off" aria-label="Peso en kg">
-    <input type="date" name="date" value="{{ today.isoformat() }}" class="date" aria-label="Fecha">
-    <button type="submit">Guardar</button>
+  <form method="post" action="/cuerpo/peso" class="stack-sm">
+    <div class="row">
+      <input name="kg" inputmode="decimal" placeholder="Peso de hoy en kg" required autocomplete="off" aria-label="Peso en kg">
+      <input type="date" name="date" value="{{ today.isoformat() }}" class="date" aria-label="Fecha">
+      <button type="submit">Guardar</button>
+    </div>
+    <details class="fold">
+      <summary>📊 Sumar lo que dice la balanza</summary>
+      <div class="row dose-fields">
+        <label>% grasa<input name="fat_pct" inputmode="decimal" autocomplete="off"></label>
+        <label>% músculo<input name="muscle_pct" inputmode="decimal" autocomplete="off"></label>
+        <label>Magra kg<input name="lean_kg" inputmode="decimal" autocomplete="off"></label>
+      </div>
+      <div class="row dose-fields">
+        <label>% agua<input name="water_pct" inputmode="decimal" autocomplete="off"></label>
+        <label>Visceral<input name="visceral_fat" inputmode="numeric" autocomplete="off"></label>
+      </div>
+      <p class="soft"><small>Lo que dejes vacío conserva lo que ya había ese día.</small></p>
+    </details>
   </form>
 
   <button type="button" class="btn ghost" data-dialog-open="weight-goal-dialog">🎯 {{ 'Cambiar meta de peso' if summary.goal else 'Anotar una meta de peso' }}</button>
@@ -70,6 +100,24 @@
         <label>Meta en kg<input name="kg" inputmode="decimal" enterkeyhint="done" placeholder="Vacío la quita" value="{{ summary.goal | number if summary.goal else '' }}" autocomplete="off" aria-label="Meta en kg"></label>
         <div class="dialog-actions"><button type="button" class="ghost" data-dialog-close>Cancelar</button><button type="submit">Guardar meta</button></div>
       </form>
+      <h3>🪜 Hitos en el camino</h3>
+      <p class="soft"><small>Escalones intermedios. No cambian la meta final.</small></p>
+      <ul class="lines tight">
+        {% for m in milestones %}
+        <li>
+          <strong class="num">{{ m.kg | number }} kg</strong>
+          <span class="grow soft">{{ m.note }}</span>
+          <form method="post" action="/cuerpo/hito/{{ m.id }}/borrar" data-confirm="¿Borrar el hito de {{ m.kg | number }} kg?"><button class="x danger" aria-label="Borrar hito">×</button></form>
+        </li>
+        {% else %}
+        <li class="empty">Sin hitos todavía.</li>
+        {% endfor %}
+      </ul>
+      <form method="post" action="/cuerpo/hito" class="row">
+        <input name="kg" inputmode="decimal" required placeholder="kg" autocomplete="off" aria-label="Hito en kg">
+        <input name="note" maxlength="120" placeholder="Nota (opcional)" autocomplete="off" aria-label="Nota del hito">
+        <button type="submit" class="ghost">Sumar hito</button>
+      </form>
     </section>
   </dialog>
 
@@ -80,6 +128,7 @@
       <li>
         <span class="grow">{{ weight.date.strftime('%d/%m/%Y') }}</span>
         <strong class="num">{{ weight.kg | number }} kg</strong>
+        {% if weight.fat_pct is not none %}<small class="num soft">{{ weight.fat_pct | number }} % grasa</small>{% endif %}
         <form method="post" action="/cuerpo/peso/{{ weight.id }}/borrar" data-confirm="¿Borrar este registro de peso?"><button class="x danger" aria-label="Borrar peso">×</button></form>
       </li>
       {% endfor %}

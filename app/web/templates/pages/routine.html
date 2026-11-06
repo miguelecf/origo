@@ -28,7 +28,7 @@
       {% for item in plan['items'] %}
       <li>
         <span class="grow"><b>{{ item.exercise.name }}</b>
-          <small class="num">{{ item.sets }} × {{ item.reps }}{% if item.kg is not none %}, {{ item.kg | number }} kg{% endif %}</small></span>
+          <small class="num">{{ item.sets }} × {{ item.reps }}{% if item.reps_max %}–{{ item.reps_max }}{% endif %}{% if item.kg is not none %}, {{ item.kg | number }} kg{% endif %}</small></span>
         <form method="post" action="/entreno/rutina/item/{{ item.id }}/subir"><button class="x" aria-label="Subir {{ item.exercise.name }}" {% if loop.first %}disabled{% endif %}>↑</button></form>
         <form method="post" action="/entreno/rutina/item/{{ item.id }}/bajar"><button class="x" aria-label="Bajar {{ item.exercise.name }}" {% if loop.last %}disabled{% endif %}>↓</button></form>
         <form method="post" action="/entreno/rutina/item/{{ item.id }}/borrar" data-confirm="¿Sacar {{ item.exercise.name }} del {{ plan.name | lower }}? Lo que ya hiciste queda en el historial.">
@@ -49,7 +49,7 @@
     <datalist id="ejercicios">{% for name in exercise_names %}<option value="{{ name }}">{% endfor %}</datalist>
     <div class="row dose-fields">
       <label>Series<input name="sets" inputmode="numeric" required placeholder="4" autocomplete="off"></label>
-      <label>Repeticiones<input name="reps" inputmode="numeric" required placeholder="10" autocomplete="off"></label>
+      <label>Repeticiones<input name="reps" inputmode="text" required placeholder="10 u 8-12" autocomplete="off"></label>
       <label>Kilos<input name="kg" inputmode="decimal" placeholder="Opcional" autocomplete="off" aria-label="Kilos, opcional"></label>
     </div>
     <button type="submit">Agregar</button>

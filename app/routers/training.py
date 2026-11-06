@@ -56,8 +56,9 @@ def add_item(
     weekday: int, name: str = Form(""), sets: str = Form(""), reps: str = Form(""), kg: str = Form(""),
     db: Session = Depends(get_db),
 ):
+    reps_min, reps_max = training.parse_reps(reps)
     try:
-        training.add_item(db, weekday, name, parse_int(sets), parse_int(reps), parse_amount(kg))
+        training.add_item(db, weekday, name, parse_int(sets), reps_min, parse_amount(kg), reps_max=reps_max)
     except ValueError as exc:
         return _to_routine(weekday, str(exc))
     return _to_routine(weekday)

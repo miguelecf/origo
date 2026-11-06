@@ -23,11 +23,24 @@ Sin OAuth completo ni token estático, el transporte remoto no se monta y `/mcp`
 El transporte stdio sigue siendo local, sin OAuth: protegé el acceso al usuario del sistema.
 
 Tools de lectura: `get_overview`, `list_transactions`, `get_debts`, `get_due_payments`,
-`get_weight_series`, `get_food_log`, `get_checkins`, `get_market_trips`, `get_price_history`,
-`get_home_list`, `get_subscriptions`. De escritura: `add_transaction`, `add_debt`, `lend_card`, `set_installment_paid`,
-`resolve_payment_claim`, `save_checkin`, `log_food`, `log_weight`, `set_weight_goal`,
-`add_to_home_list`, `toggle_home_item`, `add_subscription`, `mark_subscription_charged`,
-`set_subscription_active`, `delete_transaction`. Prompt: `weekly_review`.
+`get_weight_series`, `get_weight_goals`, `get_food_log`, `get_checkins`, `get_market_trips`,
+`get_price_history`, `get_home_list`, `get_subscriptions`, `get_diet_plan`, `get_routine`,
+`get_workout_history`.
+
+De escritura: `add_transaction`, `add_debt`, `lend_card`, `set_installment_paid`,
+`resolve_payment_claim`, `save_checkin`, `log_food`, `log_weight` (con composición opcional),
+`set_weight_goal` (meta final), `add_weight_milestone`, `add_to_home_list`, `toggle_home_item`,
+`add_subscription`, `mark_subscription_charged`, `set_subscription_active`, `set_diet_slot`,
+`append_to_diet_slot`, `set_diet_targets`, `add_routine_item`, `update_routine_item`,
+`move_routine_item`, `set_routine_day_title`.
+
+De borrado (pedí confirmación antes): `delete_transaction`, `delete_weight_milestone`,
+`delete_routine_item`.
+
+Límites a propósito: el MCP no marca entrenamientos como hechos (eso lo tocás vos en el gym),
+la rutina es fija por día de semana y no rota sola, y los objetivos del plan (kcal, macros) se
+guardan tal cual: Origo no los calcula ni los toma como comidas consumidas.
+Prompt: `weekly_review`.
 
 ## Hermes como compañero
 
@@ -74,7 +87,7 @@ otra IP. Con `MCP_LOCAL_ONLY=0` el bearer es la única barrera: restringí quié
 4. En una sesión de Hermes corré `/reload-mcp` y pedile "¿cómo vengo este mes?".
 
 `tools.include` es una lista cerrada: las tools nuevas de Origo no aparecen hasta que las
-sumes. Para que no pueda borrar, sacá `delete_transaction`.
+sumes. Para que no pueda borrar, sacá las tres `delete_*`.
 
 ### Skill y recordatorios
 

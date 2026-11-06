@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Entreno | {{ app_name }}{% endblock %}
 {% block layout %}page-grid{% endblock %}
-{% macro dose(x) %}{{ x.sets }} × {{ x.reps }}{% if x.kg is not none %}, {{ x.kg | number }} kg{% endif %}{% endmacro %}
+{% macro dose(x) %}{{ x.sets }} × {{ x.reps }}{% if x.reps_max %}–{{ x.reps_max }}{% endif %}{% if x.kg is not none %}, {{ x.kg | number }} kg{% endif %}{% endmacro %}
 {% block content %}
 {% set total = plan['items'] | length %}
 {% set done_count = plan['items'] | selectattr('id', 'in', done) | list | length %}

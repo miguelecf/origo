@@ -41,19 +41,71 @@ def _weekday(value: int) -> int:
     return value
 
 
-def add_item(db: Session, weekday: int, name: str, sets: int | None, reps: int | None, kg: Decimal | None = None) -> RoutineItem:
-    weekday = _weekday(weekday)
+def parse_reps(text: str | None) -> tuple[int | None, int | None]:
+    """'10' → (10, None); '8-12', '8–12' u '8 a 12' → (8, 12). Lo que no se entiende, (None, None)."""
+    raw = (text or "").strip().lower().replace("–", "-").replace("—", "-").replace(" a ", "-")
+    parts = [p.strip() for p in raw.split("-")]
+    if not 1 <= len(parts) <= 2 or not all(p.isdigit() for p in parts):
+        return None, None
+    low = int(parts[0])
+    high = int(parts[1]) if len(parts) == 2 else None
+    return low, (None if high == low else high)
+
+
+def format_reps(reps: int, reps_max: int | None) -> str:
+    return f"{reps}–{reps_max}" if reps_max else str(reps)
+
+
+def _validate_dose(sets: int | None, reps: int | None, reps_max: int | None, kg: Decimal | None) -> None:
     if not sets or not 1 <= sets <= 50:
         raise ValueError("Poné cuántas series (de 1 a 50)")
     if not reps or not 1 <= reps <= 500:
         raise ValueError("Poné cuántas repeticiones (de 1 a 500)")
+    if reps_max is not None and not reps < reps_max <= 500:
+        raise ValueError("El rango de repeticiones va de menos a más, ej. 8–12")
     if kg is not None and (not Decimal(kg).is_finite() or not 0 <= kg <= 1000):
         raise ValueError("Los kilos van de 0 a 1000")
-    count = db.scalar(select(func.count(RoutineItem.id)).where(RoutineItem.weekday == weekday)) or 0
-    if count >= MAX_ITEMS_PER_DAY:
+
+
+def add_item(
+    db: Session, weekday: int, name: str, sets: int | None, reps: int | None, kg: Decimal | None = None,
+    reps_max: int | None = None, allow_duplicate: bool = False,
+) -> RoutineItem:
+    weekday = _weekday(weekday)
+    _validate_dose(sets, reps, reps_max, kg)
+    exercise = exercise_for(db, name)
+    items = _items(db, weekday)
+    if not allow_duplicate and any(i.exercise_id == exercise.id for i in items):
+        db.rollback()
+        raise ValueError(f"{exercise.name} ya está el {WEEKDAYS[weekday].lower()}")
+    if len(items) >= MAX_ITEMS_PER_DAY:
+        db.rollback()
         raise ValueError(f"Un día admite hasta {MAX_ITEMS_PER_DAY} ejercicios")
-    item = RoutineItem(weekday=weekday, exercise=exercise_for(db, name), sets=sets, reps=reps, kg=kg, position=count)
+    item = RoutineItem(weekday=weekday, exercise=exercise, sets=sets, reps=reps, reps_max=reps_max, kg=kg,
+                       position=len(items))
     db.add(item)
+    db.commit()
+    return item
+
+
+_KEEP = object()
+
+
+def update_item(db: Session, item_id: int, sets=_KEEP, reps=_KEEP, reps_max=_KEEP, kg=_KEEP) -> RoutineItem:
+    """Cambia la dosis de un ejercicio de la rutina; lo que no se pasa queda igual.
+    reps_max=None o kg=None los borran. El historial ya registrado no cambia."""
+    item = db.get(RoutineItem, item_id)
+    if item is None:
+        raise ValueError("Ese ejercicio ya no está en la rutina")
+    new = {
+        "sets": item.sets if sets is _KEEP else sets,
+        "reps": item.reps if reps is _KEEP else reps,
+        "reps_max": item.reps_max if reps_max is _KEEP else reps_max,
+        "kg": item.kg if kg is _KEEP else kg,
+    }
+    _validate_dose(**new)
+    for key, value in new.items():
+        setattr(item, key, value)
     db.commit()
     return item
 
@@ -68,7 +120,7 @@ def move_item(db: Session, item_id: int, step: int) -> None:
     """Sube (-1) o baja (+1) un ejercicio dentro de su día."""
     item = db.get(RoutineItem, item_id)
     if item is None:
-        return
+        raise ValueError("Ese ejercicio ya no está en la rutina")
     items = _items(db, item.weekday)
     i = items.index(item)
     j = max(0, min(len(items) - 1, i + step))
@@ -78,12 +130,20 @@ def move_item(db: Session, item_id: int, step: int) -> None:
     db.commit()
 
 
-def delete_item(db: Session, item_id: int) -> None:
-    """Saca el ejercicio de la rutina. Lo que ya se hizo queda en el historial."""
-    if item := db.get(RoutineItem, item_id):
-        db.execute(update(WorkoutLog).where(WorkoutLog.routine_item_id == item_id).values(routine_item_id=None))
-        db.delete(item)
-        db.commit()
+def delete_item(db: Session, item_id: int) -> bool:
+    """Saca el ejercicio de la rutina. Lo que ya se hizo queda en el historial.
+    Reacomoda las posiciones del día. Devuelve si había algo para sacar."""
+    item = db.get(RoutineItem, item_id)
+    if item is None:
+        return False
+    weekday = item.weekday
+    db.execute(update(WorkoutLog).where(WorkoutLog.routine_item_id == item_id).values(routine_item_id=None))
+    db.delete(item)
+    db.flush()
+    for position, each in enumerate(_items(db, weekday)):
+        each.position = position
+    db.commit()
+    return True
 
 
 def set_title(db: Session, weekday: int, title: str) -> None:
@@ -129,7 +189,7 @@ def toggle_done(db: Session, item_id: int, on: dt.date | None = None) -> bool:
         db.delete(log)
     else:
         db.add(WorkoutLog(date=day, exercise_id=item.exercise_id, routine_item_id=item.id,
-                          sets=item.sets, reps=item.reps, kg=item.kg))
+                          sets=item.sets, reps=item.reps, reps_max=item.reps_max, kg=item.kg))
     db.commit()
     return log is None
 

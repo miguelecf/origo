@@ -24,6 +24,40 @@
 </section>
 {% endif %}
 
+{% set t = targets %}
+<section class="card block" id="objetivos">
+  <h2>{{ ico('🎯') }}Objetivos del plan</h2>
+  {% include "partials/error.html" %}
+  {% if t.kcal is not none or t.protein_g is not none or t.carbs_g is not none or t.fat_g is not none %}
+  <div class="weights">
+    {% if t.kcal is not none %}<div><small>Calorías</small><b class="num">{{ t.kcal }}</b><small>kcal por día</small></div>{% endif %}
+    {% if t.protein_g is not none %}<div><small>Proteína</small><b class="num">{{ t.protein_g }} g</b></div>{% endif %}
+    {% if t.carbs_g is not none %}<div><small>Carbohidratos</small><b class="num">{{ t.carbs_g }} g</b></div>{% endif %}
+    {% if t.fat_g is not none %}<div><small>Grasas</small><b class="num">{{ t.fat_g }} g</b></div>{% endif %}
+  </div>
+  {% endif %}
+  {% if target_lines.rules %}<h3>📏 Reglas</h3><ul class="plan-lines">{% for line in target_lines.rules %}<li>{{ line }}</li>{% endfor %}</ul>{% endif %}
+  {% if target_lines.supplements %}<h3>💊 Suplementos</h3><ul class="plan-lines">{% for line in target_lines.supplements %}<li>{{ line }}</li>{% endfor %}</ul>{% endif %}
+  <p class="soft"><small>Es lo que dice el plan, no lo que comiste. Origo no lo calcula: lo carga quien arma el plan.</small></p>
+  <details class="fold">
+    <summary>✏️ Editar objetivos</summary>
+    <form method="post" action="/cuerpo/dieta/objetivos" class="stack-sm">
+      <div class="row dose-fields">
+        <label>kcal<input name="kcal" inputmode="numeric" value="{{ t.kcal if t.kcal is not none }}" autocomplete="off"></label>
+        <label>Proteína g<input name="protein_g" inputmode="numeric" value="{{ t.protein_g if t.protein_g is not none }}" autocomplete="off"></label>
+      </div>
+      <div class="row dose-fields">
+        <label>Carbos g<input name="carbs_g" inputmode="numeric" value="{{ t.carbs_g if t.carbs_g is not none }}" autocomplete="off"></label>
+        <label>Grasas g<input name="fat_g" inputmode="numeric" value="{{ t.fat_g if t.fat_g is not none }}" autocomplete="off"></label>
+      </div>
+      <label>Reglas<textarea name="rules" rows="3" maxlength="2000" placeholder="Una por renglón">{{ t.rules }}</textarea></label>
+      <label>Suplementos<textarea name="supplements" rows="3" maxlength="2000" placeholder="Uno por renglón">{{ t.supplements }}</textarea></label>
+      <button type="submit">Guardar objetivos</button>
+    </form>
+  </details>
+  {% if saved == "objetivos" %}<p class="ok" role="status">✅ Guardado.</p>{% endif %}
+</section>
+
 <div class="diet-slots">
   {% for slot in meal_plan %}
   <section class="card diet-slot {{ 'is-now' if slot.key == now_slot }}" id="{{ slot.key }}">

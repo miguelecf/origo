@@ -33,7 +33,8 @@ class RoutineItem(Base):
     weekday: Mapped[int] = mapped_column(index=True)
     exercise_id: Mapped[int] = mapped_column(ForeignKey("exercises.id"))
     sets: Mapped[int]
-    reps: Mapped[int]
+    reps: Mapped[int]  # con reps_max, el mínimo del rango
+    reps_max: Mapped[int | None] = mapped_column(default=None)  # None: reps fijas
     kg: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
     position: Mapped[int] = mapped_column(default=0)
 
@@ -52,6 +53,7 @@ class WorkoutLog(Base):
     routine_item_id: Mapped[int | None] = mapped_column(ForeignKey("routine_items.id", ondelete="SET NULL"))
     sets: Mapped[int]
     reps: Mapped[int]
+    reps_max: Mapped[int | None] = mapped_column(default=None)
     kg: Mapped[Decimal | None] = mapped_column(Numeric(6, 2))
     created_at: Mapped[dt.datetime] = mapped_column(default=now)
 

@@ -111,10 +111,15 @@
     <!-- ===== AGENTE ===== -->
     <section class="agent">
       <div class="wrap agent-grid">
+        <figure class="hermes">
+          <img src="img/hermes.webp" alt="Hermes: ilustración en tinta azul de una chica con auriculares que sostiene una esfera sobre la palma" width="634" height="940" loading="lazy">
+          <figcaption>Hermes</figcaption>
+        </figure>
         <div class="agent-copy">
           <h2 class="section-title">Pensado para hablar con un agente</h2>
           <p>Origo trae un servidor MCP con 26 herramientas que usan las mismas reglas que la app. Un agente puede anotar un gasto o una suscripción, marcar una cuota pagada, avisarte qué vence en la semana o armarte la revisión semanal cruzando sueño, gastos y peso.</p>
-          <p>La idea es hablarle a <b>Hermes</b> por Telegram, en un chat privado que solo me responde a mí, mientras el MCP queda cerrado a la misma máquina.</p>
+          <p>Yo le hablo a <b>Hermes</b> por Telegram, en un chat privado que solo me responde a mí. Hermes corre en la misma laptop que Origo y entra al MCP por <code>127.0.0.1</code>: el MCP no se publica, ni siquiera en la red de Tailscale.</p>
+          <p class="soft">Hermes es opcional. Si se cae o no lo instalás, la web sigue completa, y cualquier otro cliente MCP sirve igual.</p>
         </div>
         <div class="chat" aria-label="Ejemplo de conversación">
           <p class="chat-note">Ejemplo de conversación</p>
@@ -132,7 +137,7 @@
       <ul class="cards">
         <li><span class="emoji" aria-hidden="true">🏠</span><h3>Servidor propio</h3><p>Corre en una laptop en casa, con la base SQLite en el disco y backups diarios.</p></li>
         <li><span class="emoji" aria-hidden="true">🔐</span><h3>Entrada cerrada</h3><p>Contraseña con Argon2id, código 2FA opcional, sesiones que vencen y bloqueo ante intentos repetidos.</p></li>
-        <li><span class="emoji" aria-hidden="true">🌐</span><h3>Sin puertos abiertos</h3><p>Se publica con un túnel de Cloudflare: el router no expone nada hacia afuera.</p></li>
+        <li><span class="emoji" aria-hidden="true">🌐</span><h3>Solo en mi red</h3><p>Se publica con Tailscale Serve, sin abrir puertos en el router: solo llegan mis dispositivos, y adentro igual pide login.</p></li>
         <li><span class="emoji" aria-hidden="true">📱</span><h3>App en el celular</h3><p>Se instala desde Safari y abre sin barra del navegador. En el teléfono solo queda la compra en curso, para seguir sin señal.</p></li>
       </ul>
     </section>
@@ -141,7 +146,7 @@
     <section class="wrap stack-section">
       <h2 class="section-title">Hecho con</h2>
       <ul class="stack-list">
-        <li>Python</li><li>FastAPI</li><li>Jinja2</li><li>HTMX</li><li>Alpine.js</li><li>SQLite</li><li>FastMCP</li><li>PWA</li><li>systemd</li><li>Cloudflare Tunnel</li>
+        <li>Python</li><li>FastAPI</li><li>Jinja2</li><li>HTMX</li><li>Alpine.js</li><li>SQLite</li><li>FastMCP</li><li>PWA</li><li>systemd</li><li>Tailscale</li><li>Hermes</li>
       </ul>
       <p class="soft">Sin frameworks de frontend ni build: HTML del servidor, un CSS propio y JavaScript mínimo.</p>
       <p>Es código abierto, con licencia MIT. Si te sirve, servilo en tu casa o en un VPS: <a href="https://github.com/miguelecf/origo">github.com/miguelecf/origo</a>.</p>

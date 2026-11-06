@@ -97,6 +97,11 @@ h2, h3 { text-wrap: balance; }
 .agent-grid { display: grid; gap: 36px; align-items: center; }
 .agent-copy { display: flex; flex-direction: column; gap: 16px; max-width: 34rem; }
 .agent-copy p { color: #cfcfcf; }
+.agent-copy code { font-size: 0.9em; padding: 1px 6px; border: 1.5px solid var(--line); border-radius: 4px; background: var(--gray); }
+.agent-copy .soft { color: var(--muted); }
+.hermes { margin: 0; justify-self: center; width: 100%; max-width: 280px; border: 2px solid var(--line); border-radius: 12px; padding: 8px; background: #050505; box-shadow: 8px 8px 0 var(--shadow); }
+.hermes img { border-radius: 6px; width: 100%; }
+.hermes figcaption { padding: 10px 4px 2px; font: 600 0.95rem/1 var(--wordmark); letter-spacing: 0.06em; color: var(--muted); text-align: center; }
 .chat { display: flex; flex-direction: column; gap: 10px; padding: 20px; border: 2px solid var(--line); border-radius: 16px; background: var(--sheet); box-shadow: 7px 7px 0 var(--shadow); max-width: 30rem; width: 100%; justify-self: center; }
 .chat-note { font-size: 0.8rem; color: var(--muted); text-align: center; letter-spacing: 0.04em; }
 .msg { max-width: 85%; padding: 10px 14px; border-radius: 14px; line-height: 1.45; }
@@ -126,7 +131,10 @@ h2, h3 { text-wrap: balance; }
   .module { grid-template-columns: 1fr 1fr; gap: 56px; }
   .module.flip .module-copy { order: 2; }
   .module-shots { justify-self: center; }
-  .agent-grid { grid-template-columns: 1.1fr 1fr; gap: 64px; }
+  .agent-grid { grid-template-columns: minmax(220px, 0.7fr) 1.1fr; grid-template-areas: "art copy" "art chat"; gap: 36px 64px; }
+  .hermes { grid-area: art; align-self: center; max-width: 340px; }
+  .agent-copy { grid-area: copy; }
+  .chat { grid-area: chat; justify-self: start; }
   .cards { grid-template-columns: repeat(4, 1fr); }
 }
 @media (prefers-reduced-motion: reduce) {

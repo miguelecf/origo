@@ -240,9 +240,9 @@ sudo systemctl start origo
 ```
 
 Una restauración también puede revivir links antes revocados; rotalos si corresponde.
-Al arrancar se crean las tablas nuevas y se agrega `guests.expires_at` si falta, sin borrar
-datos existentes. Esta es una migración aditiva puntual; futuros cambios de esquema
-requieren migraciones explícitas. Hacé un backup antes de actualizar.
+Al arrancar se crean las tablas nuevas y se agregan las columnas nuevas que falten (siempre
+opcionales), sin borrar ni modificar datos existentes. Solo se admiten cambios aditivos: un cambio
+que borre o transforme columnas necesitaría una migración explícita. Hacé un backup antes de actualizar.
 
 ## 7. Verificación mínima
 

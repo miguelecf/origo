@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Agente | {{ app_name }}{% endblock %}
+{% block layout %}page-grid{% endblock %}
+{% block content %}
+<header class="page-head">
+  <h1>{{ ico('🤖') }}Agente</h1>
+  <p class="soft">Lo que puede hacer el agente conectado por MCP y lo que hizo. Los límites los aplica Origo, aunque el agente esté mal configurado.</p>
+</header>
+
+<section class="card block">
+  <h2>{{ ico('🔒') }}Límites</h2>
+  <ul class="lines policy">
+    <li><span class="grow">Acceso</span><b>{{ "Solo lectura" if policy.access == "read" else "Lee y escribe" }}</b></li>
+    <li><span class="grow">Tools prohibidas</span><b>{{ policy.deny | join(", ") if policy.deny else "Ninguna" }}</b></li>
+    <li><span class="grow">Escrituras por hora</span><b class="num">{{ writes_last_hour }} de {{ policy.max_writes_per_hour or "∞" }}</b></li>
+    <li><span class="grow">Fechas</span><b>Hasta {{ policy.max_backdate_days }} días atrás, nunca a futuro</b></li>
+    <li><span class="grow">Monto máximo</span><b class="num">{{ policy.max_amount | money if policy.max_amount else "Sin tope" }}</b></li>
+  </ul>
+  <p class="soft"><small>Se cambian en el <code>.env</code>: <code>MCP_ACCESS</code>, <code>MCP_DENY</code>, <code>MCP_MAX_WRITES_PER_HOUR</code>, <code>MCP_MAX_BACKDATE_DAYS</code> y <code>MCP_MAX_AMOUNT</code>. Después, reiniciá Origo.</small></p>
+</section>
+
+<section class="card block">
+  <h2>{{ ico('📜') }}Lo que escribió</h2>
+  <ul class="lines agent-log">
+    {% for a in actions %}
+    <li class="{{ '' if a.ok else 'rejected' }}">
+      <div class="grow">
+        <span><b>{{ a.tool }}</b>{% if not a.ok %} <span class="tag">Rechazado</span>{% endif %}</span>
+        <small class="mono">{{ a.args }}</small>
+        {% if a.error %}<small class="neg">{{ a.error }}</small>{% endif %}
+      </div>
+      <small class="soft num">{{ a.at.strftime('%d/%m %H:%M') }}</small>
+    </li>
+    {% else %}
+    <li class="empty">Todavía no escribió nada. Las lecturas no se registran.</li>
+    {% endfor %}
+  </ul>
+</section>
+{% endblock %}

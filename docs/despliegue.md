@@ -265,6 +265,10 @@ sudo journalctl -u origo -n 30
 
 Si cambió algo en `deploy/`, volvé a copiar los `.service` y corré `sudo systemctl daemon-reload`.
 
+Lo mismo en un solo comando, con vuelta atrás automática si algo falla: `deploy/update.sh`.
+Instalado como `/usr/local/sbin/origo-update`, también lo puede correr un agente sin poder tocar
+el código (ver [Aislar al agente del código](agentes.md#aislar-al-agente-del-código)).
+
 ## Alternativa: Docker
 
 Para quien prefiera contenedores: el mismo Origo con `compose.yaml` (publica solo

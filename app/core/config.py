@@ -21,6 +21,13 @@ class Settings(BaseSettings):
     GITHUB_ALLOWED_LOGIN: str = ""
     MCP_TOKEN: str = ""
     MCP_LOCAL_ONLY: bool = False
+    # Límites para el agente conectado por MCP (ver docs/agentes.md). Valen aunque el agente
+    # esté mal configurado: los aplica Origo, no el cliente.
+    MCP_ACCESS: str = "write"  # write | read (solo lectura)
+    MCP_DENY: str = ""  # tools prohibidas, separadas por coma; acepta comodines: "delete_*,clear_meal"
+    MCP_MAX_WRITES_PER_HOUR: int = 60  # 0 = sin tope
+    MCP_MAX_BACKDATE_DAYS: int = 45  # cuántos días para atrás puede fechar algo; nunca a futuro
+    MCP_MAX_AMOUNT: float = 0  # tope por monto (amount, total); 0 = sin tope
     LOG_LEVEL: str = "INFO"
     LOG_FILE: str = ""
 
@@ -39,6 +46,10 @@ class Settings(BaseSettings):
             raise ValueError("ORIGO_DEV_OPEN solo está permitido en localhost")
         if self.MCP_TOKEN and (len(self.MCP_TOKEN.encode()) < 32 or len(set(self.MCP_TOKEN)) < 12):
             raise ValueError("MCP_TOKEN debe ser aleatorio y tener al menos 32 bytes")
+        if self.MCP_ACCESS not in {"write", "read"}:
+            raise ValueError("MCP_ACCESS debe ser 'write' o 'read'")
+        if min(self.MCP_MAX_WRITES_PER_HOUR, self.MCP_MAX_BACKDATE_DAYS, self.MCP_MAX_AMOUNT) < 0:
+            raise ValueError("Los límites del MCP no pueden ser negativos")
         if min(self.SESSION_IDLE_SECONDS, self.SESSION_ABSOLUTE_SECONDS) <= 0:
             raise ValueError("Los plazos de sesión deben ser positivos")
         return self

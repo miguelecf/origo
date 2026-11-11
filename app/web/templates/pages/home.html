@@ -3,7 +3,7 @@
 {% set f = o.finance %}{% set d = o.debts %}{% set w = o.weight %}{% set s = o.last_7_days %}
 <header class="page-head with-actions">
   <div><h1>{{ ico('📅') }}Tu mes</h1><p class="soft">{{ MONTHS[o.period[0].month - 1] | capitalize }} {{ o.period[0].year }}</p></div>
-  <a href="/invitados" class="btn ghost small-btn">🔗 Invitados con link</a>
+  <div class="row wrap"><a href="/invitados" class="btn ghost small-btn">🔗 Invitados con link</a><a href="/agente" class="btn ghost small-btn">🤖 Agente</a></div>
 </header>
 <div class="stack">
   {% if not o.today.checkin %}<a href="/dia" class="cta"><span>✅ Hacer el check-in de hoy</span><span>1 minuto</span></a>{% endif %}

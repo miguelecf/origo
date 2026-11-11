@@ -1,6 +1,6 @@
 [project]
 name = "origo"
-version = "0.2.0"
+version = "0.3.0"
 description = "Origo: tu registro personal de plata, deudas, entreno, comidas y súper, con MCP para agentes"
 license = "MIT"
 authors = [

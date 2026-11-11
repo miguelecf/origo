@@ -1,7 +1,7 @@
 ---
 name: origo
 description: Registrar y revisar la vida del usuario en Origo (plata, suscripciones, deudas y cuotas, peso y composición, comidas, plan de dieta, rutina de entreno, sueño, ánimo, súper) con las tools MCP mcp_origo_*. Usar cuando el usuario cuente un gasto o ingreso, una suscripción, una deuda, un pago de cuota, lo que comió, su peso o lo que dio la balanza, un cambio en su plan de comidas o su rutina, cómo durmió, qué falta en casa, o pida un resumen, vencimientos o la revisión semanal.
-version: 1.1.0
+version: 1.2.0
 metadata:
   hermes:
     tags: [origo, finanzas, salud, telegram]
@@ -24,8 +24,9 @@ no responde. No inventes datos.
   que cambia el registro: monto, si es gasto o ingreso, a quién se le debe, cuántas cuotas.
 - Después de cada alta, confirmá en una línea qué guardaste, con el id: "Anotado: gasto de $ 12.500 en
   Súper (#231)". Así se puede corregir.
-- **Borrar o desmarcar** (`delete_transaction`, `delete_routine_item`, `delete_weight_milestone`,
-  `set_installment_paid` con `paid=false`, rechazar un aviso de pago) solo con un "sí" explícito del
+- **Borrar, vaciar o desmarcar** (`delete_transaction`, `delete_food_entry`, `clear_meal`,
+  `copy_diet_day`, `delete_routine_item`, `delete_weight_milestone`, `set_installment_paid` con
+  `paid=false`, rechazar un aviso de pago) solo con un "sí" explícito del
   usuario después de mostrarle qué vas a tocar.
 - **El plan no es lo hecho.** Los objetivos de dieta no son comidas consumidas (eso es `log_food`), y
   cargar la rutina no marca entrenamientos: eso lo marca el usuario en la app. Nunca inventes un
@@ -53,7 +54,12 @@ no responde. No inventes datos.
 | "Peso 81,4" / "mi meta final es 78" | `log_weight` / `set_weight_goal` |
 | "La balanza dio 35,8 % de grasa y 64 % de músculo" | `log_weight` con `fat_pct`, `muscle_pct` (y `lean_kg`, `water_pct`, `visceral_fat` si los dio). Solo lo que dijo: no estimes el resto |
 | "Mi próximo objetivo es 105" | `add_weight_milestone`. **No** `set_weight_goal`: eso pisa la meta final |
-| "¿Qué tengo que comer?" / "cambiá la merienda" | `get_diet_plan`; para sumar sin pisar `append_to_diet_slot`; para reescribir, leé y mandá el texto entero a `set_diet_slot` |
+| "¿Qué tengo que comer?" | `get_diet_plan` con `weekday` de hoy (`today_weekday`) |
+| "El lunes y el jueves ceno tortilla" / "cambiá la merienda del martes" | `set_meal` (slot, una comida en un renglón, `weekdays`). Leé `format` en `get_diet_plan` |
+| "Todos los días desayuno avena" | `set_meal` con `weekdays` [0,1,2,3,4,5,6] |
+| "El sábado igual que el viernes" | `copy_diet_day` (pisa: confirmá antes) |
+| "Sacá la media mañana del domingo" | `clear_meal` (confirmá antes) |
+| "Anoté mal esa comida" | `get_food_log` para el id, confirmar, `delete_food_entry` |
 | "Mi plan es 2200 kcal y 180 de proteína", "tomo creatina" | `set_diet_targets` (reglas y suplementos, uno por renglón) |
 | "¿Qué entreno hoy?" / "agregá press banca 4×8–12 el lunes" | `get_routine` / `add_routine_item` (`reps` 8, `reps_max` 12) |
 | "Subí la sentadilla a 62,5" | `get_routine` para el id, después `update_routine_item` |
@@ -93,8 +99,18 @@ cambiá los días con las tools de rutina. Poné el nombre en el título del dí
 ej. "Rutina A"). No programes esto como automatización sin que el usuario lo pida.
 
 **Cambios en el plan.** Antes de editar, leé (`get_diet_plan` o `get_routine`). Después de editar,
-confirmá en una línea qué cambió. Las tools de dieta devuelven `previous_text`: si el usuario dice
-"deshacé", volvé a guardar ese texto.
+confirmá en una línea qué cambió. `set_meal` y `clear_meal` devuelven `previous` por día: si el
+usuario dice "deshacé", volvé a guardar eso con `set_meal`.
+
+**Formato de la dieta.** Una comida por momento y por día, en un solo renglón, con cantidades si el
+plan las tiene: "200 g de pollo con arroz y ensalada". Nada de listas ni de "opción 1 / opción 2":
+si el plan da opciones, preguntá cuál va cada día o repartilas vos y mostrá cómo quedó la semana.
+El formato exacto está en `format`, en la respuesta de `get_diet_plan`.
+
+**Límites de Origo.** Origo puede rechazar una escritura: fechas a futuro o muy viejas, montos sobre
+el tope, un peso que se aleja mucho del último, demasiadas escrituras en una hora o una tool
+deshabilitada. No es un error tuyo para esquivar: decile al usuario el motivo en una línea y, si
+corresponde, que lo cargue desde la web. No reintentes con otros datos para pasar el límite.
 
 **Si la web pide login.** El MCP y la web se autentican por separado: que la web pida contraseña en
 un navegador no significa que el MCP esté caído. Decíselo así al usuario.

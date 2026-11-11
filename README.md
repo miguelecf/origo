@@ -44,16 +44,18 @@ de invitado limitado a Súper o Deudas, nada más.
 | 🔁 | **Suscripciones** | IA, streaming, cursos, en pesos o dólares, mensuales o anuales. Marcás que se cobró y pasa sola a gastos. |
 | 🤝 | **Deudas** | Personas, tarjetas y entidades (Mercado Pago, Naranja X, Brubank, Lemon, Binance, bancos), en cuotas. Si prestás la tarjeta, anota los dos lados y avisa si la cuota vence y no te pagaron. |
 | 🏋️ | **Entreno** | Rutina para cada día de la semana (series × repeticiones o rangos como 8–12, kilos opcionales). En el gym tocás cada ejercicio al terminarlo y queda el historial con la última vez. |
-| 💪 | **Cuerpo** | Plan de comidas en cinco momentos con buscador y objetivos del plan (calorías, macros, reglas, suplementos), lo que comiste, peso con lo que da la balanza (grasa, músculo), meta final con hitos, y un check-in diario de sueño, ánimo y movimiento. |
-| 🛒 | **Súper** | Lista de casa para mandar por WhatsApp y la compra en vivo: escribís precios y el total se suma solo, incluso sin señal. |
+| 💪 | **Cuerpo** | Plan de comidas para cada día de la semana, una comida por momento, con buscador y objetivos del plan (calorías, macros, reglas, suplementos), lo que comiste, peso con lo que da la balanza (grasa, músculo), meta final con hitos, y un check-in diario de sueño, ánimo y movimiento. |
+| 🛒 | **Súper** | Lista de casa para mandar por WhatsApp. En el súper es la misma lista: marcás cada cosa con su precio y el total se suma solo, incluso sin señal. Si la compra es compartida, repartís por porcentaje y la parte del otro queda en Deudas. |
 
 Además:
 
 - **Invitados con link:** compartís el súper o las deudas con alguien sin darle usuario. Solo
   ve lo suyo, y puede avisarte "ya te pagué".
 - **App instalable:** desde Safari, "Agregar a inicio". Abre sin barra del navegador.
-- **MCP:** 40 herramientas para que un agente anote y consulte por vos, con las mismas reglas
-  que la app, incluido editar el plan de comidas y la rutina.
+- **MCP:** 42 herramientas para que un agente anote y consulte por vos, con las mismas reglas
+  que la app, incluido editar el plan de comidas y la rutina. Origo pone los límites: solo
+  lectura, tools prohibidas, topes de escrituras, fechas y montos, y un registro de todo lo que
+  escribió el agente ([docs/agentes.md](docs/agentes.md#límites-del-agente)).
 
 ## Recomendado: con Hermes
 

@@ -30,17 +30,94 @@ Tools de lectura: `get_overview`, `list_transactions`, `get_debts`, `get_due_pay
 De escritura: `add_transaction`, `add_debt`, `lend_card`, `set_installment_paid`,
 `resolve_payment_claim`, `save_checkin`, `log_food`, `log_weight` (con composición opcional),
 `set_weight_goal` (meta final), `add_weight_milestone`, `add_to_home_list`, `toggle_home_item`,
-`add_subscription`, `mark_subscription_charged`, `set_subscription_active`, `set_diet_slot`,
-`append_to_diet_slot`, `set_diet_targets`, `add_routine_item`, `update_routine_item`,
+`add_subscription`, `mark_subscription_charged`, `set_subscription_active`, `set_meal`,
+`copy_diet_day`, `set_diet_targets`, `add_routine_item`, `update_routine_item`,
 `move_routine_item`, `set_routine_day_title`.
 
-De borrado (pedí confirmación antes): `delete_transaction`, `delete_weight_milestone`,
-`delete_routine_item`.
+De borrado (pedí confirmación antes): `delete_transaction`, `delete_food_entry`, `clear_meal`,
+`delete_weight_milestone`, `delete_routine_item`.
 
 Límites a propósito: el MCP no marca entrenamientos como hechos (eso lo tocás vos en el gym),
-la rutina es fija por día de semana y no rota sola, y los objetivos del plan (kcal, macros) se
+la rutina y la dieta son fijas por día de semana y no rotan solas, la dieta lleva una sola
+comida por momento y por día (el formato exacto lo devuelve `get_diet_plan` en `format`), y los objetivos del plan (kcal, macros) se
 guardan tal cual: Origo no los calcula ni los toma como comidas consumidas.
 Prompt: `weekly_review`.
+
+## Límites del agente
+
+Origo decide qué puede hacer el agente, del lado del servidor. Valen aunque el cliente del agente
+esté mal configurado, y se suman a la lista `tools.include` de Hermes, no la reemplazan.
+
+| Variable | Por defecto | Qué hace |
+|---|---|---|
+| `MCP_ACCESS` | `write` | `read` deja al agente en solo lectura: no ve ni puede llamar tools que escriben. |
+| `MCP_DENY` | vacío | Tools prohibidas, separadas por coma, con comodines: `delete_*,clear_meal`. No aparecen en la lista y si las llama, falla. |
+| `MCP_MAX_WRITES_PER_HOUR` | `60` | Tope de escrituras por hora. `0` = sin tope. |
+| `MCP_MAX_BACKDATE_DAYS` | `45` | Cuántos días para atrás puede fechar algo (`date`). Nunca a futuro. |
+| `MCP_MAX_AMOUNT` | `0` | Tope por monto (`amount`, `total`, `amount_ars`). `0` = sin tope. Lo que lo supere se carga desde la web. |
+
+Además, un peso que se aleja más de un 8 % del último registro se rechaza: el agente tiene que
+confirmarlo con vos y lo cargás desde la web.
+
+Cada escritura, hecha o rechazada, queda registrada con sus datos. Se ve en la web, en
+**Inicio → 🤖 Agente**, junto con los límites activos. Las lecturas no se registran.
+
+Cuando una tool rechaza algo, el agente recibe el motivo ("una comida va en un solo renglón",
+"el agente no puede cargar fechas a futuro") para poder corregir. Los errores internos siguen
+ocultos.
+
+Estos límites cubren lo que el agente hace **dentro de Origo**. Que no pueda tocar el código ni
+la base de datos por otro lado se resuelve en el sistema: ver
+[Aislar al agente](#aislar-al-agente-del-código).
+
+## Aislar al agente del código
+
+Un agente como Hermes suele tener terminal propia. El MCP no le da acceso al código, pero si el
+agente corre con tu usuario, y tu usuario tiene `sudo`, puede editar Origo o leer la base por
+fuera del MCP. Eso se corta en el sistema, no en Origo:
+
+1. **Un usuario propio para el agente**, sin `sudo` general y fuera de los grupos `sudo`, `wheel`,
+   `docker` y `lxd` (todos equivalen a root):
+
+   ```bash
+   sudo useradd --create-home --shell /bin/bash hermes
+   ```
+
+   Instalá y corré el agente con ese usuario. El token del MCP va en la configuración del agente
+   (por ejemplo `~/.hermes/.env`), no en `/etc/origo`.
+
+2. **El código, la configuración y la base no son suyos.** Con la instalación de
+   [despliegue.md](despliegue.md) ya es así: `/opt/origo` es de root, `/etc/origo` y
+   `/var/lib/origo` son del usuario `origo` y no se pueden leer desde otro.
+
+3. **Que se pueda actualizar, y nada más.** `deploy/update.sh` hace backup, avanza a lo último de
+   `origin/main` (solo fast-forward: si el código instalado tiene cambios locales o la historia
+   cambió, no hace nada), corre `uv sync`, reinicia y comprueba que Origo responda. Si falla,
+   vuelve a la versión anterior. No recibe argumentos. Instalalo fuera del repo y dale permiso
+   solo a ese comando:
+
+   ```bash
+   sudo install -m 755 -o root -g root /opt/origo/deploy/update.sh /usr/local/sbin/origo-update
+   echo 'hermes ALL=(root) NOPASSWD: /usr/local/sbin/origo-update ""' | sudo tee /etc/sudoers.d/origo-update
+   sudo chmod 440 /etc/sudoers.d/origo-update && sudo visudo -c
+   ```
+
+   El `""` final prohíbe pasarle argumentos. El agente actualiza con `sudo origo-update`. Lo que
+   instala sale de GitHub, no de algo que el agente pueda escribir. Si una versión cambia
+   `deploy/update.sh`, el script lo avisa y la copia en `/usr/local/sbin` la reinstala una persona.
+
+4. **Comprobalo:**
+
+   ```bash
+   sudo sh /opt/origo/deploy/check-agent.sh hermes
+   ```
+
+   Revisa grupos, reglas de `sudo` y que el usuario no pueda escribir el código, la configuración
+   ni los servicios, ni leer la base, el `.env` o los backups. Cada línea dice `OK` o `FALLA`.
+
+Si tu agente permite apagar sus herramientas de terminal o de archivos, también sirve, pero no
+alcanza solo: una opción del agente se puede cambiar desde el propio agente. Los permisos del
+sistema, no.
 
 ## Hermes como compañero
 

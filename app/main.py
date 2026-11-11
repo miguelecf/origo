@@ -14,7 +14,7 @@ from app.core.config import settings
 from app.core.database import init_db
 from app.core.logging import configure_logging
 from app.mcp_server import remote_http_app
-from app.routers import auth, body, checkin, debts, finance, guests, home, lists, training
+from app.routers import agent, auth, body, checkin, debts, finance, guests, home, lists, training
 from app.web.auth import require_owner
 from app.web.security import SecurityMiddleware
 
@@ -84,7 +84,7 @@ def create_app() -> FastAPI:
     # Deudas y Súper chequean permisos por ruta: también entran invitados con link mágico.
     app.include_router(debts.router)
     app.include_router(lists.router)
-    for module in (home, finance, body, checkin, guests, training):
+    for module in (home, finance, body, checkin, guests, training, agent):
         app.include_router(module.router, dependencies=[Depends(require_owner)])
 
     @app.get("/sw.js", include_in_schema=False)

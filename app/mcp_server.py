@@ -10,10 +10,12 @@ from contextlib import contextmanager
 from decimal import Decimal
 
 from fastmcp import FastMCP
+from fastmcp.exceptions import ToolError
+from fastmcp.server.middleware import Middleware
 
 from app.core.clock import month_bounds, today
 from app.core.database import SessionLocal, init_db
-from app.services import body, brands, checkins, debts, diet, finance, guests, lists, overview, subscriptions, training
+from app.services import agent, body, brands, checkins, debts, diet, finance, guests, lists, overview, subscriptions, training
 
 INSTRUCTIONS = """\
 Registro personal de la vida de una persona: plata, deudas, peso, comidas, sueño, ánimo,
@@ -32,6 +34,41 @@ Dieta: una comida por momento y por día, en un solo renglón. Leé `format` en 
 mcp = FastMCP("Origo", instructions=INSTRUCTIONS, mask_error_details=True)
 
 
+class AgentGuard(Middleware):
+    """Lo que el agente puede ver y escribir lo decide Origo (MCP_ACCESS, MCP_DENY, MCP_MAX_*),
+    no el cliente. Cada escritura, hecha o rechazada, queda en el registro del agente."""
+
+    async def on_list_tools(self, context, call_next):
+        return [tool for tool in await call_next(context) if agent.allowed(tool.name)]
+
+    async def on_call_tool(self, context, call_next):
+        name, args = context.message.name, dict(context.message.arguments or {})
+        if not agent.allowed(name):
+            raise ToolError(f"{name} está deshabilitada para el agente en esta instancia")
+        if agent.is_read(name):
+            return await call_next(context)
+        with _db() as db:
+            try:
+                agent.check_rate(db)
+                agent.check_args(args)
+                agent.check_plausible(db, name, args)
+            except ValueError as exc:
+                agent.record(db, name, args, ok=False, error=str(exc))
+                raise ToolError(str(exc)) from None
+        try:
+            result = await call_next(context)
+        except Exception as exc:
+            with _db() as db:
+                agent.record(db, name, args, ok=False, error=str(exc) or type(exc).__name__)
+            raise
+        with _db() as db:
+            agent.record(db, name, args, ok=True)
+        return result
+
+
+mcp.add_middleware(AgentGuard())
+
+
 def remote_http_app():
     from app.services.mcp_auth import remote_auth
 
@@ -42,14 +79,26 @@ def remote_http_app():
 
 @contextmanager
 def _db():
+    """Sesión para una tool. Las reglas de los servicios (ValueError) llegan al agente con su
+    mensaje, para que pueda corregir; cualquier otro error sigue enmascarado."""
     with SessionLocal() as db:
-        yield db
+        try:
+            yield db
+        except ValueError as exc:
+            raise ToolError(str(exc)) from None
+
+
+def _iso(value: str) -> dt.date:
+    try:
+        return dt.date.fromisoformat(value)
+    except (TypeError, ValueError):
+        raise ToolError(f"Fecha inválida: {value!r}. Usá YYYY-MM-DD") from None
 
 
 def _range(from_date: str | None, to_date: str | None, default_days: int | None = None) -> tuple[dt.date, dt.date]:
     """Sin fechas: el mes en curso (o los últimos `default_days` días)."""
     if from_date and to_date:
-        return dt.date.fromisoformat(from_date), dt.date.fromisoformat(to_date)
+        return _iso(from_date), _iso(to_date)
     if default_days:
         end = today() + dt.timedelta(days=1)
         return end - dt.timedelta(days=default_days), end
@@ -79,7 +128,7 @@ def _debt(debt) -> dict:
 
 
 def _date(value: str | None) -> dt.date | None:
-    return dt.date.fromisoformat(value) if value else None
+    return _iso(value) if value else None
 
 
 def _catalog(kind: str) -> str:
@@ -128,7 +177,7 @@ def _targets(t) -> dict:
 def _clear(fields: list[str] | None, allowed) -> set[str]:
     fields = set(fields or [])
     if unknown := fields - set(allowed):
-        raise ValueError(f"No se puede limpiar: {', '.join(sorted(unknown))}")
+        raise ToolError(f"No se puede limpiar: {', '.join(sorted(unknown))}")
     return fields
 
 
@@ -210,8 +259,8 @@ def get_debts(include_settled: bool = False) -> list[dict]:
 def get_weight_series(from_date: str | None = None, to_date: str | None = None) -> list[dict]:
     """Pesos registrados (kg), con la composición de la balanza si se cargó ese día
     (fat_pct, muscle_pct, lean_kg, water_pct, visceral_fat). Sin fechas, todo el historial."""
-    start = dt.date.fromisoformat(from_date) if from_date else None
-    end = dt.date.fromisoformat(to_date) if to_date else None
+    start = _iso(from_date) if from_date else None
+    end = _iso(to_date) if to_date else None
     with _db() as db:
         return [_weight(w) for w in body.weight_series(db, start, end)]
 
@@ -286,7 +335,7 @@ def add_transaction(kind: str, amount: float, category: str, note: str = "", dat
     with _db() as db:
         tx = finance.add_transaction(
             db, kind=kind, amount=Decimal(str(amount)), category=category, note=note,
-            date=dt.date.fromisoformat(date) if date else None,
+            date=_iso(date) if date else None,
         )
         return {"id": tx.id, "date": tx.date.isoformat()}
 
@@ -383,7 +432,7 @@ def lend_card(
     with _db() as db:
         pair = debts.create_card_loan(
             db, person=person, card=card, total=Decimal(str(total)), installments=installments,
-            first_due=dt.date.fromisoformat(first_due), description=description, brand=brand,
+            first_due=_iso(first_due), description=description, brand=brand,
         )
         return [_debt(d) for d in pair]
 
@@ -515,7 +564,7 @@ def delete_weight_milestone(milestone_id: int) -> dict:
 
 def _week_days(weekdays: list[int] | None) -> list[int]:
     if not weekdays:
-        raise ValueError("Mandá weekdays: lista de días, 0 = lunes ... 6 = domingo")
+        raise ToolError("Mandá weekdays: lista de días, 0 = lunes ... 6 = domingo")
     return weekdays
 
 
@@ -547,7 +596,7 @@ def get_diet_plan(weekday: int | None = None) -> dict:
 ))
 def set_meal(slot: str, text: str, weekdays: list[int]) -> dict:
     if not text.strip():
-        raise ValueError("Para vaciar un momento usá clear_meal")
+        raise ToolError("Para vaciar un momento usá clear_meal")
     with _db() as db:
         previous = diet.set_meal(db, slot, text, _week_days(weekdays))
         return {"slot": slot, "meal": diet.clean_meal(text), "previous": {str(d): t or None for d, t in previous.items()}}
@@ -637,7 +686,7 @@ def update_routine_item(
 def move_routine_item(item_id: int, direction: str) -> dict:
     """Sube (direction 'up') o baja ('down') un ejercicio dentro de su día. Devuelve el día."""
     if direction not in ("up", "down"):
-        raise ValueError("direction es 'up' o 'down'")
+        raise ToolError("direction es 'up' o 'down'")
     with _db() as db:
         training.move_item(db, item_id, -1 if direction == "up" else 1)
         item = db.get(training.RoutineItem, item_id)

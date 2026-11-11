@@ -60,15 +60,18 @@ mcp_servers:
         - mark_subscription_charged
         - set_subscription_active
         - add_weight_milestone
-        - set_diet_slot
-        - append_to_diet_slot
+        - set_meal
+        - copy_diet_day
         - set_diet_targets
         - add_routine_item
         - update_routine_item
         - move_routine_item
         - set_routine_day_title
-        # Para que no pueda borrar nada, sacá estas tres líneas.
+        # Para que no pueda borrar nada, sacá estas líneas. Mejor todavía: MCP_DENY=delete_*,clear_meal
+        # en el .env de Origo, que lo bloquea del lado del servidor.
         - delete_transaction
+        - delete_food_entry
+        - clear_meal
         - delete_weight_milestone
         - delete_routine_item
 

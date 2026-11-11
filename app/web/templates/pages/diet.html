@@ -34,7 +34,7 @@
 </nav>
 
 {% set day_name = week[weekday].name %}
-<h2 class="block">{{ day_name }}{% if weekday == today_weekday %} <span class="tag now-tag">Hoy</span>{% endif %}</h2>
+<div class="row between block day-head"><h2>{{ day_name }}</h2>{% if weekday == today_weekday %}<span class="tag now-tag">Hoy</span>{% endif %}</div>
 <p class="soft"><small>Una comida por momento. Si el plan da opciones, escribí la que va este día.</small></p>
 
 <div class="diet-slots">

@@ -59,6 +59,11 @@ def _build_debt(
     return debt
 
 
+def new_debt(**fields) -> Debt:
+    """Arma la deuda sin commitear, para operaciones compuestas (como cerrar una compra dividida)."""
+    return _build_debt(**fields)
+
+
 def create_debt(
     db: Session, *, person: str, direction: str, total: Decimal,
     installments: int = 1, first_due: dt.date | None = None, description: str = "",

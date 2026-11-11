@@ -75,15 +75,26 @@ document.addEventListener("alpine:init", () => {
     let local = null;
     try { local = JSON.parse(localStorage.getItem(storageKey)); } catch {}
     const source = local?.dirty ? local : state; // si quedó algo sin sincronizar, gana lo del teléfono
+    const fromServer = source === state;
+    const pctOf = (value, fallback) => {
+      const n = Math.round(Number(String(value ?? "").replace(",", ".")));
+      return String(value ?? "").trim() !== "" && Number.isFinite(n) && n >= 0 && n <= 100 ? n : fallback;
+    };
 
     return {
       items: source.items.map((item) => withKey({ ...item,
-        price: formatMoneyInput(source === state ? toLocal(item.price) : item.price),
-        qty: source === state ? toLocal(item.qty) : item.qty,
+        price: formatMoneyInput(fromServer ? toLocal(item.price) : item.price),
+        qty: fromServer ? toLocal(item.qty) : item.qty,
+        my_pct: item.my_pct ?? "",
       })),
-      budget: formatMoneyInput(source === state ? toLocal(source.budget) : source.budget),
+      budget: formatMoneyInput(fromServer ? toLocal(source.budget) : source.budget),
+      splitWith: source.splitWith ?? state.splitWith ?? "",
+      splitPct: String(source.splitPct ?? state.splitPct ?? 50),
+      people: state.people || [],
       lastPrices: state.lastPrices,
-      draft: { name: "", price: "", qty: "", hint: "" },
+      editing: null,
+      edit: {},
+      draft: "",
       status: "Guardado.",
       timer: null,
       money,
@@ -94,38 +105,70 @@ document.addEventListener("alpine:init", () => {
       qtyOf(item) { return parseNum(item.qty, { thousands: false }) || 1; },
       fmtQty(item) { return String(this.qtyOf(item)).replace(".", ","); },
       subtotal(item) { return this.priceOf(item) * this.qtyOf(item); },
+      get splitting() { return state.isOwner && this.splitWith.trim() !== ""; },
+      get splitPctValue() { return pctOf(this.splitPct, 50); },
+      // Vacío = compartido con el % por defecto; si no se divide, todo es mío.
+      mineOf(item) { return this.splitting ? pctOf(item.my_pct, this.splitPctValue) : 100; },
       get total() { return this.items.reduce((sum, item) => sum + this.subtotal(item), 0); },
-      get unpriced() { return this.items.filter((item) => !this.priceOf(item)).length; },
+      get myTotal() { return this.items.reduce((sum, item) => sum + this.subtotal(item) * this.mineOf(item) / 100, 0); },
       get budgetValue() { return parseNum(this.budget); },
+      get groups() {
+        return [
+          { title: "Falta", items: this.items.filter((item) => !this.priceOf(item)) },
+          { title: "En el carrito", items: this.items.filter((item) => this.priceOf(item)) },
+        ];
+      },
+      shareLabel(item) {
+        if (!this.splitting) return "";
+        const mine = this.mineOf(item);
+        return mine === 100 ? ", mío" : mine === 0 ? ", suyo" : `, pongo ${mine}%`;
+      },
+      editPct() { return pctOf(this.edit.my_pct, this.splitPctValue); },
 
       hintFor(item) {
         const last = this.lastPrices[normalize(item.name || "")];
         return last ? "antes " + money(Number(last)) : "";
       },
-      trend(item) {
-        const last = Number(this.lastPrices[normalize(item.name || "")]);
-        const now = this.priceOf(item);
-        if (!last || !now || last === now) return null;
-        const pct = Math.round(((now - last) / last) * 100);
-        if (!pct) return null;
-        return { up: pct > 0, text: `${pct > 0 ? "▲ subió" : "▼ bajó"} ${Math.abs(pct)}%, antes ${money(last)}` };
-      },
-      suggest() { this.draft.hint = this.hintFor(this.draft); },
 
-      // Precio solo, o producto solo (para completar después), o las dos cosas.
-      add() {
-        const name = this.draft.name.trim();
-        if (!name && !parseNum(this.draft.price)) return;
-        this.items.forEach((item) => (item.fresh = false));
-        this.items.unshift(withKey({ name, price: this.draft.price, qty: this.draft.qty || "1", fresh: true }));
-        this.draft = { name: "", price: "", qty: "", hint: "" };
-        this.$refs.price.focus();
+      open(item) {
+        if (this.editing === item.key) { this.editing = null; return; }
+        this.editing = item.key;
+        // Si no se divide, my_pct arranca en blanco: así, si después se divide, el producto queda compartido.
+        this.edit = { price: item.price, qty: item.qty || "1", name: item.name, my_pct: item.my_pct ?? "", error: "" };
+        this.$nextTick(() => document.getElementById("price-" + item.key)?.focus());
+      },
+      confirm(item) {
+        // Respaldo: si el estado no llegó a tomar lo tipeado, vale lo que muestra el campo.
+        const shown = document.getElementById("price-" + item.key)?.value;
+        if (!parseNum(this.edit.price) && parseNum(shown)) this.edit.price = shown;
+        if (!parseNum(this.edit.price)) { this.edit.error = "Poné el precio para marcarlo."; return; }
+        const wasPending = !this.priceOf(item);
+        Object.assign(item, {
+          price: this.edit.price, qty: this.edit.qty || "1",
+          name: (this.edit.name ?? item.name).trim(), my_pct: this.edit.my_pct,
+        });
+        if (wasPending) { // al carrito, en el orden en que se agarra
+          this.items.splice(this.items.indexOf(item), 1);
+          this.items.push(item);
+        }
+        this.editing = null;
         this.changed();
       },
-      remove(index) { this.items.splice(index, 1); this.changed(); },
-      confirmRemove(index) {
-        const item = this.items[index];
-        requestConfirmation(`¿Quitar ${item.name || "este producto"} de la compra?`, () => this.remove(index));
+      uncheck(item) { item.price = ""; this.editing = null; this.changed(); },
+      add() {
+        const name = this.draft.trim().replace(/\s+/g, " ");
+        const item = withKey({ name, price: "", qty: "1", my_pct: "" });
+        this.items.push(item);
+        this.draft = "";
+        this.open(item);
+        this.changed();
+      },
+      confirmRemove(item) {
+        requestConfirmation(`¿Quitar ${item.name || "este producto"} de la compra?`, () => {
+          this.items.splice(this.items.indexOf(item), 1);
+          this.editing = null;
+          this.changed();
+        });
       },
 
       changed() {
@@ -136,17 +179,22 @@ document.addEventListener("alpine:init", () => {
       },
       persist(dirty) {
         try {
-          const items = this.items.map(({ name, price, qty }) => ({ name, price, qty }));
-          localStorage.setItem(storageKey, JSON.stringify({ items, budget: this.budget, dirty }));
+          const items = this.items.map(({ name, price, qty, my_pct }) => ({ name, price, qty, my_pct }));
+          localStorage.setItem(storageKey, JSON.stringify({
+            items, budget: this.budget, splitWith: this.splitWith, splitPct: this.splitPct, dirty,
+          }));
         } catch {}
       },
       payload() {
         return {
           budget: String(this.budgetValue || ""),
+          split_with: this.splitting ? this.splitWith.trim() : "",
+          split_pct: String(this.splitPctValue),
           items: this.items.map((item) => ({
             name: item.name,
             price: String(this.priceOf(item)),
             qty: String(this.qtyOf(item)),
+            my_pct: this.splitting ? String(this.mineOf(item)) : "",
           })),
         };
       },
@@ -169,9 +217,13 @@ document.addEventListener("alpine:init", () => {
       async finish() {
         clearTimeout(this.timer);
         if (!(await this.sync())) return;
-        const question = state.isOwner
-          ? `¿Guardar ${money(this.total)} como gasto en Súper?`
-          : `¿Terminar la compra de ${money(this.total)}?`;
+        const pending = this.items.filter((item) => !this.priceOf(item)).length;
+        const left = pending ? ` Quedan ${pending} sin marcar: siguen en la lista de casa.` : "";
+        const question = !state.isOwner
+          ? `¿Terminar la compra de ${money(this.total)}?${left}`
+          : this.splitting && this.total - this.myTotal > 0
+            ? `¿Guardar ${money(this.total)} como gasto en Súper y anotar que ${this.splitWith.trim()} te debe ${money(this.total - this.myTotal)}?${left}`
+            : `¿Guardar ${money(this.total)} como gasto en Súper?${left}`;
         requestConfirmation(question, () => {
           try { localStorage.removeItem(storageKey); } catch {}
           this.$refs.close.submit();

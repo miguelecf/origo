@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.core.clock import now, today
 from app.core.numbers import parse_amount
-from app.models import HomeItem, MarketItem, MarketTrip, PriceRecord
+from app.models import Debt, HomeItem, MarketItem, MarketTrip, PriceRecord
+from app.services.debts import new_debt
 from app.services.finance import new_transaction
 
 
@@ -115,8 +116,24 @@ def _decimal(value, default: Decimal, *, thousands: bool = True) -> Decimal:
     return number if number is not None and number >= 0 else default
 
 
-def save_trip(db: Session, trip_id: int, items: list[dict], budget=None) -> MarketTrip:
-    """Reemplaza los productos de una compra abierta con lo que manda el navegador."""
+def _pct(value) -> int | None:
+    """Porcentaje entero de 0 a 100. Vacío o inválido = None."""
+    if value is None or value == "":
+        return None
+    try:
+        pct = round(float(str(value).replace(",", ".")))
+    except ValueError:
+        return None
+    return pct if 0 <= pct <= 100 else None
+
+
+def save_trip(
+    db: Session, trip_id: int, items: list[dict], budget=None, split_with: str | None = None, split_pct=None,
+) -> MarketTrip:
+    """Reemplaza los productos de una compra abierta con lo que manda el navegador.
+
+    La división (split_with, split_pct y my_pct de cada producto) solo vale en compras mías:
+    en la de un invitado se ignora."""
     trip = db.get(MarketTrip, trip_id)
     if trip is None or trip.closed_at is not None:
         raise ValueError("Esa compra no está abierta")
@@ -128,10 +145,14 @@ def save_trip(db: Session, trip_id: int, items: list[dict], budget=None) -> Mark
         price = _decimal(raw.get("price"), Decimal(0))
         if name or price:  # un precio sin nombre vale: modo "solo precios"
             trip.items.append(MarketItem(
-                name=name, price=price, qty=_decimal(raw.get("qty"), Decimal(1), thousands=False) or Decimal(1), position=position,
+                name=name, price=price, qty=_decimal(raw.get("qty"), Decimal(1), thousands=False) or Decimal(1),
+                position=position, my_pct=_pct(raw.get("my_pct")) if trip.guest_id is None else None,
             ))
     budget = _decimal(budget, Decimal(0))
     trip.budget = budget or None
+    partner = re.sub(r"\s+", " ", str(split_with or "")).strip()[:80] if trip.guest_id is None else ""
+    trip.split_with = partner or None
+    trip.split_pct = _pct(split_pct) if partner else None
     db.commit()
     return trip
 
@@ -158,6 +179,14 @@ def close_trip(db: Session, trip_id: int) -> MarketTrip:
         raise ValueError("Anotá al menos un precio")
     if trip.guest_id is None:
         _expense_for(trip, db)
+        if trip.split_with and trip.their_total > 0:
+            debt = new_debt(
+                person=trip.split_with, direction="owed_to_me", total=trip.their_total, installments=1,
+                first_due=None, description=f"Su parte de la compra del {today():%d/%m}",
+            )
+            db.add(debt)
+            db.flush()
+            trip.debt_id = debt.id
     trip.closed_at = now()
     for item in bought:
         if item.name:
@@ -193,3 +222,10 @@ def recent_trips(db: Session, limit: int = 10, guest_id: int | None = None) -> l
     if guest_id is not None:
         q = q.where(MarketTrip.guest_id == guest_id)
     return list(db.scalars(q.order_by(MarketTrip.closed_at.desc()).limit(limit)))
+
+
+def split_people(db: Session) -> list[str]:
+    """Nombres para sugerir al dividir: con quién ya dividí y las personas de Deudas."""
+    names = set(db.scalars(select(MarketTrip.split_with).where(MarketTrip.split_with.is_not(None))))
+    names |= set(db.scalars(select(Debt.person).where(Debt.kind == "person")))
+    return sorted(names, key=str.casefold)

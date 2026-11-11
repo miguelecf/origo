@@ -3,7 +3,7 @@
 {% block content %}
 <header class="page-head">
   <h1>{{ ico('🛒') }}Ir al súper</h1>
-  <p class="soft">Anotá cada precio a medida que lo agarrás. El total se va sumando solo.</p>
+  <p class="soft">Marcá cada producto cuando lo agarrás, con su precio. El total se va sumando solo.</p>
 </header>
 
 <div class="stack card">
@@ -16,7 +16,7 @@
   {% endif %}
   <form method="post" action="/super/compra/empezar">
     <input type="hidden" name="from_list" value="false">
-    <button class="block-btn {{ 'ghost' if pending }}">✏️ Empezar en blanco, solo precios</button>
+    <button class="block-btn {{ 'ghost' if pending }}">✏️ Empezar en blanco</button>
   </form>
 </div>
 {% endblock %}

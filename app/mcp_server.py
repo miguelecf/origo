@@ -248,7 +248,10 @@ def get_market_trips(limit: int = 10) -> list[dict]:
         return [
             {"date": t.closed_at.date().isoformat(), "total": _num(t.total), "budget": _num(t.budget),
              "done_by": t.guest.name if t.guest else "me", "counted_as_my_expense": t.transaction_id is not None,
-             "items": [{"name": i.name or None, "price": _num(i.price), "qty": _num(i.qty)} for i in t.items]}
+             "split_with": t.split_with, "my_total": _num(t.my_total) if t.split_with else None,
+             "items": [{"name": i.name or None, "price": _num(i.price), "qty": _num(i.qty),
+                        **({"my_pct": 100 if i.my_pct is None else i.my_pct} if t.split_with else {})}
+                       for i in t.items]}
             for t in lists.recent_trips(db, limit)
         ]
 

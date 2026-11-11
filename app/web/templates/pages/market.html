@@ -10,6 +10,7 @@
       <span class="big" x-text="money(total)" aria-live="polite"></span>
       <input data-money class="budget" x-model="budget" @input="changed()" inputmode="decimal" placeholder="Presupuesto" aria-label="Presupuesto">
     </div>
+    <small x-show="splitting" x-cloak class="soft" x-text="'Tu parte ' + money(myTotal) + ', ' + splitWith.trim() + ' ' + money(total - myTotal)"></small>
     <template x-if="budgetValue > 0">
       <div class="stack-sm" style="gap: 0.25rem">
         <progress :value="Math.min(total, budgetValue)" :max="budgetValue" :class="{ over: total > budgetValue }"></progress>
@@ -21,44 +22,80 @@
 
   {% include "partials/error.html" %}
 
-  <form class="entry" @submit.prevent="add()">
-    <input data-money x-model="draft.price" x-ref="price" class="price-in" inputmode="decimal" enterkeyhint="done"
-           placeholder="$ 0" autocomplete="off" aria-label="Precio" autofocus>
-    <input x-model="draft.name" @input="suggest()" list="known-products" placeholder="Qué es (opcional)" autocomplete="off" aria-label="Producto">
-    <input x-model="draft.qty" inputmode="decimal" placeholder="×1" autocomplete="off" aria-label="Cantidad">
+  {% if viewer.is_owner %}
+  <details class="split card" :open="splitting">
+    <summary x-text="splitting ? '👥 Dividida con ' + splitWith.trim() : '👥 Dividir con alguien'"></summary>
+    <div class="split-form">
+      <label>Con quién
+        <input x-model="splitWith" @input="changed()" list="split-people" placeholder="Nombre" autocomplete="off">
+      </label>
+      <label>De lo compartido pongo
+        <span class="pct-in"><input x-model="splitPct" @input="changed()" inputmode="numeric" aria-label="Mi porcentaje"><span>%</span></span>
+      </label>
+      <small class="soft">Cada producto puede ser tuyo, compartido o suyo. Al terminar, su parte queda en Deudas como que te debe.</small>
+      <button type="button" class="text" x-show="splitting" @click="splitWith = ''; changed()">No dividir</button>
+    </div>
+    <datalist id="split-people">
+      <template x-for="name in people" :key="name"><option :value="name"></option></template>
+    </datalist>
+  </details>
+  {% endif %}
+
+  <template x-for="group in groups" :key="group.title">
+    <section class="cart block" x-show="group.items.length">
+      <h2 x-text="group.title + ' (' + group.items.length + ')'"></h2>
+      <ul>
+        <template x-for="item in group.items" :key="item.key">
+          <li :class="{ checked: priceOf(item) > 0, open: editing === item.key }">
+            <button type="button" class="cart-row" @click="open(item)" :aria-expanded="editing === item.key">
+              <span class="tick" aria-hidden="true" x-text="priceOf(item) > 0 ? '✓' : ''"></span>
+              <span class="name">
+                <span x-text="item.name || 'Sin nombre'" :class="{ soft: !item.name }"></span>
+                <small x-show="priceOf(item) > 0" x-text="fmtQty(item) + ' × ' + money(priceOf(item)) + shareLabel(item)"></small>
+                <small x-show="!priceOf(item) && hintFor(item)" x-text="hintFor(item)"></small>
+              </span>
+              <span class="sub num" x-show="priceOf(item) > 0" x-text="money(subtotal(item))"></span>
+            </button>
+            <form class="cart-edit" x-show="editing === item.key" x-cloak @submit.prevent="confirm(item)">
+              <label>Precio
+                <input data-money :id="'price-' + item.key" x-model="edit.price" inputmode="decimal" enterkeyhint="done"
+                       :placeholder="hintFor(item) || '$ 0'" autocomplete="off">
+              </label>
+              <label>Cantidad
+                <input x-model="edit.qty" inputmode="decimal" placeholder="1" autocomplete="off">
+              </label>
+              <template x-if="!item.name">
+                <label class="wide">Qué es
+                  <input x-model="edit.name" list="known-products" placeholder="Opcional" autocomplete="off">
+                </label>
+              </template>
+              <div class="wide shares" x-show="splitting" role="group" aria-label="De quién es">
+                <button type="button" :class="{ on: editPct() === 100 }" @click="edit.my_pct = 100">Mío</button>
+                <button type="button" :class="{ on: editPct() !== 100 && editPct() !== 0 }" @click="edit.my_pct = ''">Compartido</button>
+                <button type="button" :class="{ on: editPct() === 0 }" @click="edit.my_pct = 0">Suyo</button>
+                <span class="pct-in"><input x-model="edit.my_pct" inputmode="numeric" :placeholder="splitPctValue" aria-label="Mi porcentaje de este producto"><span>%</span></span>
+              </div>
+              <small class="wide neg" x-show="edit.error" x-text="edit.error"></small>
+              <div class="wide row">
+                <button type="submit" class="grow">Listo</button>
+                <button type="button" class="ghost" x-show="priceOf(item) > 0" @click="uncheck(item)">Desmarcar</button>
+                <button type="button" class="ghost destructive" @click="confirmRemove(item)" :aria-label="'Quitar ' + (item.name || 'producto')">Quitar</button>
+              </div>
+            </form>
+          </li>
+        </template>
+      </ul>
+    </section>
+  </template>
+
+  <form class="cart-add block" @submit.prevent="add()">
+    <input x-model="draft" list="known-products" placeholder="¿Algo que no estaba en la lista?" autocomplete="off" enterkeyhint="done" aria-label="Producto">
     <button type="submit" aria-label="Sumar">+</button>
-    <small class="hint" x-show="draft.hint" x-text="draft.hint" x-cloak></small>
   </form>
   <datalist id="known-products">
     <template x-for="name in Object.keys(lastPrices)" :key="name"><option :value="name"></option></template>
   </datalist>
-
-  <div class="ticket">
-    <header>
-      <b>Compra</b>
-      <small>{{ trip.created_at.strftime('%d/%m/%Y %H:%M') }}</small>
-      {% if viewer.guest %}<small>{{ viewer.guest.name }}</small>{% endif %}
-    </header>
-    <ol>
-      <template x-for="(item, index) in items" :key="item.key">
-        <li :class="{ unpriced: !priceOf(item), fresh: item.fresh }">
-          <span class="name"><span x-text="item.name || 'Sin nombre'" :class="{ 'soft': !item.name }"></span>
-            <em x-show="qtyOf(item) !== 1" x-text="' ×' + fmtQty(item)"></em></span>
-          <span class="sub" x-text="priceOf(item) ? money(subtotal(item)) : 'sin precio'"></span>
-          <button class="x danger" @click="confirmRemove(index)" :aria-label="'Quitar ' + (item.name || 'producto')">×</button>
-          <span class="edit">
-            <input class="q" x-model="item.qty" @input="changed()" inputmode="decimal" aria-label="Cantidad">
-            <span>×</span>
-            <input data-money class="p" x-model="item.price" @input="changed()" inputmode="decimal" :placeholder="hintFor(item) || 'precio'" aria-label="Precio">
-          </span>
-          <template x-if="trend(item)"><span class="trend" :class="trend(item).up ? 'up' : 'down'" x-text="trend(item).text"></span></template>
-        </li>
-      </template>
-    </ol>
-    <p class="blank" x-show="items.length === 0">Escribí el primer precio arriba y apretá Enter.</p>
-    <footer><span>Total</span><span class="num" x-text="money(total)"></span></footer>
-    <small style="display:block; text-align:center; margin-top:0.6rem; color:#6e6c66" x-text="items.length + (items.length === 1 ? ' producto' : ' productos') + (unpriced ? ', ' + unpriced + ' sin precio' : '') + '. ' + status"></small>
-  </div>
+  <small class="soft block" style="display:block; text-align:center" x-text="status"></small>
 
   <div class="stack block">
     <button class="block-btn" @click="finish()" :disabled="total <= 0">

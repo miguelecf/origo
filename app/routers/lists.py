@@ -75,8 +75,12 @@ def trip_page(request: Request, viewer: Viewer = Depends(can_shop), db: Session 
             "tripId": trip.id,
             "isOwner": viewer.is_owner,
             "budget": _plain(trip.budget) if trip.budget else "",
+            "splitWith": trip.split_with or "",
+            "splitPct": trip.split_pct if trip.split_pct is not None else 50,
+            "people": lists.split_people(db) if viewer.is_owner else [],
             "items": [
-                {"name": i.name, "price": _plain(i.price) if i.price else "", "qty": _plain(i.qty)}
+                {"name": i.name, "price": _plain(i.price) if i.price else "", "qty": _plain(i.qty),
+                 "my_pct": "" if i.my_pct is None else i.my_pct}
                 for i in trip.items
             ],
             "lastPrices": {k: str(v) for k, v in lists.last_prices(db).items()},
@@ -97,7 +101,10 @@ def start(from_list: bool = Form(True), viewer: Viewer = Depends(can_shop), db: 
 def save(trip_id: int, payload: dict = Body(...), viewer: Viewer = Depends(can_shop), db: Session = Depends(get_db)):
     _own_trip(db, trip_id, viewer)
     try:
-        trip = lists.save_trip(db, trip_id, payload.get("items", []), payload.get("budget"))
+        trip = lists.save_trip(
+            db, trip_id, payload.get("items", []), payload.get("budget"),
+            split_with=payload.get("split_with"), split_pct=payload.get("split_pct"),
+        )
     except ValueError as exc:
         raise HTTPException(status_code=409, detail=str(exc))
     return {"total": str(trip.total)}

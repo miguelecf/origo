@@ -53,7 +53,7 @@
     <li>
       <div class="grow">
         <span>{{ t.closed_at | short_date | capitalize }}{% if t.guest and viewer.is_owner %}, la hizo {{ t.guest.name }}{% endif %}</span>
-        <small>{{ t.items | length }} producto{{ "s" if t.items | length != 1 }}{% if t.budget %}, presupuesto {{ t.budget | money }}{% endif %}</small>
+        <small>{{ t.items | length }} producto{{ "s" if t.items | length != 1 }}{% if t.budget %}, presupuesto {{ t.budget | money }}{% endif %}{% if t.split_with and viewer.is_owner %}, dividida con {{ t.split_with }}: tu parte {{ t.my_total | money }}{% endif %}</small>
       </div>
       <strong class="num">{{ t.total | money }}</strong>
       {% if viewer.is_owner and t.guest and not t.transaction_id %}

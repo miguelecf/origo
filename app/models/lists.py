@@ -36,6 +36,9 @@ class MarketTrip(Base):
     split_with: Mapped[str | None] = mapped_column(String(80))
     split_pct: Mapped[int | None]
     debt_id: Mapped[int | None] = mapped_column(ForeignKey("debts.id", ondelete="SET NULL"))
+    # Lo que se pagó en la caja, si difiere de la suma de lo anotado (ofertas, descuentos).
+    # Los precios de cada producto quedan como se anotaron: son los de góndola.
+    paid_total: Mapped[Decimal | None] = mapped_column(Numeric(14, 2))
 
     items: Mapped[list["MarketItem"]] = relationship(
         back_populates="trip", cascade="all, delete-orphan", order_by="MarketItem.position"
@@ -56,6 +59,27 @@ class MarketTrip(Base):
     @property
     def their_total(self) -> Decimal:
         return self.total - self.my_total
+
+    @property
+    def charged(self) -> Decimal:
+        """Lo que salió de verdad: lo pagado en la caja, o la suma de lo anotado."""
+        return self.paid_total if self.paid_total is not None else self.total
+
+    @property
+    def savings(self) -> Decimal:
+        """Cuánto menos se pagó que lo anotado. Negativo si se pagó más."""
+        return self.total - self.charged
+
+    @property
+    def their_charged(self) -> Decimal:
+        """Su parte de lo pagado: el descuento (o recargo) se reparte en proporción."""
+        if not self.total:
+            return Decimal(0)
+        return (self.their_total * self.charged / self.total).quantize(Decimal("0.01"))
+
+    @property
+    def my_charged(self) -> Decimal:
+        return self.charged - self.their_charged
 
 
 class MarketItem(Base):

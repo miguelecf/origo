@@ -214,21 +214,23 @@ document.addEventListener("alpine:init", () => {
           return false;
         }
       },
+      // Al terminar se pregunta lo pagado en la caja: con ofertas suele ser menos que lo anotado.
+      paid: "",
+      round(n) { return Math.round(n * 100) / 100; },
+      get paidValue() { return parseNum(this.paid); },
+      get pendingCount() { return this.items.filter((item) => !this.priceOf(item)).length; },
+      get theirPaid() {
+        const theirs = this.total - this.myTotal;
+        return this.total && this.paidValue ? theirs * this.paidValue / this.total : theirs;
+      },
       async finish() {
         clearTimeout(this.timer);
         if (!(await this.sync())) return;
-        const pending = this.items.filter((item) => !this.priceOf(item)).length;
-        const left = pending ? ` Quedan ${pending} sin marcar: siguen en la lista de casa.` : "";
-        const question = !state.isOwner
-          ? `¿Terminar la compra de ${money(this.total)}?${left}`
-          : this.splitting && this.total - this.myTotal > 0
-            ? `¿Guardar ${money(this.total)} como gasto en Súper y anotar que ${this.splitWith.trim()} te debe ${money(this.total - this.myTotal)}?${left}`
-            : `¿Guardar ${money(this.total)} como gasto en Súper?${left}`;
-        requestConfirmation(question, () => {
-          try { localStorage.removeItem(storageKey); } catch {}
-          this.$refs.close.submit();
-        });
+        this.paid = formatMoneyInput(toLocal(String(this.round(this.total))));
+        this.$refs.closeDialog.showModal();
+        this.$nextTick(() => this.$refs.paid.select());
       },
+      forget() { try { localStorage.removeItem(storageKey); } catch {} },
     };
   });
 });

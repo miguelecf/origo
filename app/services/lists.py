@@ -160,28 +160,42 @@ def save_trip(
 def _expense_for(trip: MarketTrip, db: Session) -> None:
     bought = [i for i in trip.items if i.price > 0]
     who = f" de {trip.guest.name}" if trip.guest else ""
+    saved = f", ahorro {trip.savings:,.0f}".replace(",", ".") if trip.savings > 0 else ""
     tx = new_transaction(
-        kind="expense", amount=trip.total, category="Súper",
-        note=f"Compra{who} ({len(bought)} producto{'s' if len(bought) != 1 else ''})", source="market",
+        kind="expense", amount=trip.charged, category="Súper",
+        note=f"Compra{who} ({len(bought)} producto{'s' if len(bought) != 1 else ''}{saved})", source="market",
     )
     db.add(tx)
     db.flush()
     trip.transaction_id = tx.id
 
 
-def close_trip(db: Session, trip_id: int) -> MarketTrip:
-    """Cierra la compra: guarda precios, tacha la lista de casa y, si la hice yo, la carga como gasto."""
+MAX_PAID_RATIO = 3  # lo pagado no puede ser más del triple de lo anotado: sería un error de tipeo
+
+
+def close_trip(db: Session, trip_id: int, paid=None) -> MarketTrip:
+    """Cierra la compra: guarda precios, tacha la lista de casa y, si la hice yo, la carga como gasto.
+
+    paid es lo que se pagó en la caja, si difiere de lo anotado (ofertas, descuentos). El gasto
+    y la parte del otro salen de ahí; los precios de cada producto quedan como se anotaron."""
     trip = db.get(MarketTrip, trip_id)
     if trip is None or trip.closed_at is not None:
         raise ValueError("Esa compra no está abierta")
     bought = [i for i in trip.items if i.price > 0]
     if not bought:
         raise ValueError("Anotá al menos un precio")
+    if paid not in (None, ""):
+        amount = parse_amount(paid) if not isinstance(paid, Decimal) else paid
+        if amount is None or amount <= 0:
+            raise ValueError("Poné cuánto pagaste en la caja")
+        if amount > trip.total * MAX_PAID_RATIO:
+            raise ValueError("Lo pagado es mucho más que lo anotado. Revisá el número")
+        trip.paid_total = amount if amount != trip.total else None
     if trip.guest_id is None:
         _expense_for(trip, db)
-        if trip.split_with and trip.their_total > 0:
+        if trip.split_with and trip.their_charged > 0:
             debt = new_debt(
-                person=trip.split_with, direction="owed_to_me", total=trip.their_total, installments=1,
+                person=trip.split_with, direction="owed_to_me", total=trip.their_charged, installments=1,
                 first_due=None, description=f"Su parte de la compra del {today():%d/%m}",
             )
             db.add(debt)

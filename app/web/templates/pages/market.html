@@ -105,6 +105,24 @@
       <button class="ghost destructive block-btn">Tirar esta compra</button>
     </form>
   </div>
-  <form method="post" action="/super/compra/{{ trip.id }}/cerrar" hx-boost="false" x-ref="close"></form>
+  <dialog class="form-sheet" x-ref="closeDialog" aria-labelledby="close-title">
+    <section class="sheet-panel">
+      <div class="dialog-handle" aria-hidden="true"></div>
+      <header class="sheet-heading"><h2 id="close-title">🧾 ¿Cuánto pagaste en la caja?</h2></header>
+      <form method="post" action="/super/compra/{{ trip.id }}/cerrar" hx-boost="false" x-ref="close" class="stack" @submit="forget()">
+        <p class="soft">Anotaste <b class="num" x-text="money(total)"></b>. Si con las ofertas el ticket dio otro número, cambialo acá.</p>
+        <input data-money name="paid" x-model="paid" x-ref="paid" inputmode="decimal" enterkeyhint="done" autocomplete="off" aria-label="Lo que pagaste" class="paid-in">
+        <p class="paid-diff" x-show="paidValue && paidValue !== round(total)" :class="paidValue < total ? 'pos' : 'neg'"
+           x-text="paidValue < total ? 'Ahorraste ' + money(total - paidValue) + ' en ofertas' : 'Pagaste ' + money(paidValue - total) + ' más de lo anotado'"></p>
+        <p class="soft" x-show="splitting && total - myTotal > 0"
+           x-text="splitWith.trim() + ' te va a deber ' + money(theirPaid) + (paidValue && paidValue !== round(total) ? ', con el descuento repartido' : '') + '.'"></p>
+        <p class="soft" x-show="pendingCount" x-text="'Quedan ' + pendingCount + ' sin marcar: siguen en la lista de casa.'"></p>
+        <div class="dialog-actions row">
+          <button type="button" class="ghost" @click="$refs.closeDialog.close()">Seguir comprando</button>
+          <button type="submit" class="grow" :disabled="!paidValue">{{ "Guardar el gasto" if viewer.is_owner else "Terminar la compra" }}</button>
+        </div>
+      </form>
+    </section>
+  </dialog>
 </div>
 {% endblock %}

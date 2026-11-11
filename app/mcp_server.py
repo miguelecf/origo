@@ -304,12 +304,15 @@ def get_checkins(from_date: str | None = None, to_date: str | None = None) -> di
 
 @mcp.tool
 def get_market_trips(limit: int = 10) -> list[dict]:
-    """Últimas compras de súper con productos, precios y total."""
+    """Últimas compras de súper con productos y precios. total es la suma de lo anotado (precios
+    de góndola); paid es lo que se pagó en la caja (con ofertas puede ser menos) y es lo que va a
+    gastos. Si la compra se dividió, my_total es mi parte de lo pagado."""
     with _db() as db:
         return [
-            {"date": t.closed_at.date().isoformat(), "total": _num(t.total), "budget": _num(t.budget),
+            {"date": t.closed_at.date().isoformat(), "total": _num(t.total), "paid": _num(t.charged),
+             "savings": _num(t.savings) if t.paid_total is not None else None, "budget": _num(t.budget),
              "done_by": t.guest.name if t.guest else "me", "counted_as_my_expense": t.transaction_id is not None,
-             "split_with": t.split_with, "my_total": _num(t.my_total) if t.split_with else None,
+             "split_with": t.split_with, "my_total": _num(t.my_charged) if t.split_with else None,
              "items": [{"name": i.name or None, "price": _num(i.price), "qty": _num(i.qty),
                         **({"my_pct": 100 if i.my_pct is None else i.my_pct} if t.split_with else {})}
                        for i in t.items]}

@@ -1,4 +1,5 @@
 from decimal import Decimal
+from urllib.parse import quote
 
 from fastapi import APIRouter, Body, Depends, Form, HTTPException, Request
 from fastapi.responses import RedirectResponse
@@ -111,12 +112,12 @@ def save(trip_id: int, payload: dict = Body(...), viewer: Viewer = Depends(can_s
 
 
 @router.post("/compra/{trip_id}/cerrar")
-def close(trip_id: int, viewer: Viewer = Depends(can_shop), db: Session = Depends(get_db)):
+def close(trip_id: int, paid: str = Form(""), viewer: Viewer = Depends(can_shop), db: Session = Depends(get_db)):
     _own_trip(db, trip_id, viewer)
     try:
-        lists.close_trip(db, trip_id)
+        lists.close_trip(db, trip_id, paid or None)
     except ValueError as exc:
-        return RedirectResponse(f"/super/compra?error={exc}", status_code=303)
+        return RedirectResponse(f"/super/compra?error={quote(str(exc))}", status_code=303)
     return RedirectResponse("/plata" if viewer.is_owner else "/super", status_code=303)
 
 

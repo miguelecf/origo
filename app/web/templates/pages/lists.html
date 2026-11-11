@@ -53,9 +53,10 @@
     <li>
       <div class="grow">
         <span>{{ t.closed_at | short_date | capitalize }}{% if t.guest and viewer.is_owner %}, la hizo {{ t.guest.name }}{% endif %}</span>
-        <small>{{ t.items | length }} producto{{ "s" if t.items | length != 1 }}{% if t.budget %}, presupuesto {{ t.budget | money }}{% endif %}{% if t.split_with and viewer.is_owner %}, dividida con {{ t.split_with }}: tu parte {{ t.my_total | money }}{% endif %}</small>
+        {% set bought = t.items | selectattr("price") | list | length %}
+        <small>{{ bought }} producto{{ "s" if bought != 1 }}{% if t.budget %}, presupuesto {{ t.budget | money }}{% endif %}{% if t.split_with and viewer.is_owner %}, dividida con {{ t.split_with }}: tu parte {{ t.my_charged | money }}{% endif %}</small>
       </div>
-      <strong class="num">{{ t.total | money }}</strong>
+      <strong class="num">{{ t.charged | money }}{% if t.savings > 0 %}<small class="pos" style="display:block; font-weight:500">ahorraste {{ t.savings | money }}</small>{% endif %}</strong>
       {% if viewer.is_owner and t.guest and not t.transaction_id %}
       <form method="post" action="/super/compra/{{ t.id }}/cargar"><button class="text">La pagué yo</button></form>
       {% endif %}

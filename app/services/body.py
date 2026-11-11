@@ -150,10 +150,12 @@ def log_food(db: Session, text: str, at: dt.datetime | None = None) -> FoodEntry
     return entry
 
 
-def delete_food(db: Session, entry_id: int) -> None:
+def delete_food(db: Session, entry_id: int) -> bool:
     if entry := db.get(FoodEntry, entry_id):
         db.delete(entry)
         db.commit()
+        return True
+    return False
 
 
 def food_log(db: Session, start: dt.date, end: dt.date) -> list[FoodEntry]:

@@ -23,7 +23,9 @@ Para analizar, empezá por get_overview y después bajá al detalle que necesite
 Las tools de escritura guardan de verdad: confirmá montos y fechas antes de llamarlas, y para
 borrar algo pedí siempre confirmación explícita.
 El plan (dieta y rutina) no es lo hecho: los objetivos del plan no son comidas consumidas, y la
-rutina no marca entrenamientos como realizados. La rutina es fija por día de la semana: no rota sola.
+rutina no marca entrenamientos como realizados. La rutina y la dieta son fijas por día de la
+semana (0 = lunes ... 6 = domingo): no rotan solas.
+Dieta: una comida por momento y por día, en un solo renglón. Leé `format` en get_diet_plan.
 """
 
 
@@ -219,7 +221,17 @@ def get_food_log(from_date: str | None = None, to_date: str | None = None) -> li
     """Comidas en texto libre con fecha y hora. Sin fechas, los últimos 7 días."""
     start, end = _range(from_date, to_date, default_days=7)
     with _db() as db:
-        return [{"at": e.at.isoformat(timespec="minutes"), "text": e.text} for e in body.food_log(db, start, end)]
+        return [{"id": e.id, "at": e.at.isoformat(timespec="minutes"), "text": e.text}
+                for e in body.food_log(db, start, end)]
+
+
+@mcp.tool
+def delete_food_entry(entry_id: int) -> dict:
+    """Borra una comida registrada (el id sale de get_food_log). Pedí confirmación antes."""
+    with _db() as db:
+        if not body.delete_food(db, entry_id):
+            raise ValueError("No existe esa comida")
+        return {"deleted": entry_id}
 
 
 @mcp.tool
@@ -501,43 +513,62 @@ def delete_weight_milestone(milestone_id: int) -> dict:
 
 # --- Dieta (Cuerpo → Dieta) ---
 
+def _week_days(weekdays: list[int] | None) -> list[int]:
+    if not weekdays:
+        raise ValueError("Mandá weekdays: lista de días, 0 = lunes ... 6 = domingo")
+    return weekdays
+
+
 @mcp.tool(description=(
-    "Plan de alimentación tal como se ve en Cuerpo → Dieta: el texto de cada momento del día "
-    f"(slot: {', '.join(diet.SLOT_KEYS)}) y los objetivos del plan (kcal, macros, reglas, suplementos). "
-    "Es el plan, no lo que se comió: lo comido sale de get_food_log."
+    "Plan de alimentación tal como se ve en Cuerpo → Dieta, y los objetivos del plan (kcal, macros, "
+    "reglas, suplementos). Sin weekday trae la semana entera; con weekday (0 = lunes ... 6 = domingo), "
+    "ese día. Leé `format` antes de escribir: " + diet.FORMAT + " Lo comido sale de get_food_log."
 ))
-def get_diet_plan() -> dict:
+def get_diet_plan(weekday: int | None = None) -> dict:
     with _db() as db:
+        meals = lambda day: [{"slot": m["key"], "name": m["name"], "from": m["from"].strftime("%H:%M"),
+                              "meal": m["text"] or None} for m in day]
+        days = [d for d in diet.week(db) if weekday is None or d["weekday"] == weekday]
+        if weekday is not None and not days:
+            raise ValueError("El día va de 0 (lunes) a 6 (domingo)")
         return {
-            "slots": [{"slot": s["key"], "name": s["name"], "from": s["from"].strftime("%H:%M"), "text": s["text"]}
-                      for s in diet.plan(db)],
+            "format": diet.FORMAT,
+            "days": [{"weekday": d["weekday"], "name": d["name"], "meals": meals(d["meals"])} for d in days],
+            "today_weekday": today().weekday(),
             "current_slot": diet.current_slot(),
             "targets": _targets(diet.targets(db)),
         }
 
 
 @mcp.tool(description=(
-    f"Reemplaza el texto completo de un momento del plan (slot: {', '.join(diet.SLOT_KEYS)}), una opción "
-    f"por renglón, hasta {diet.MAX_TEXT} caracteres. Pisa lo que había: leé antes con get_diet_plan y "
-    "mandá el texto entero. Devuelve el texto anterior para poder deshacer. Para sumar sin pisar, "
-    "append_to_diet_slot."
+    "Pone UNA comida en un momento del plan, para uno o varios días. " + diet.FORMAT + " "
+    "weekdays: lista de días (ej. [0] el lunes, [0,1,2,3,4,5,6] todos). Pisa lo que había en esos días "
+    "y devuelve lo anterior (previous, por día) para poder deshacer. Para vaciar, clear_meal."
 ))
-def set_diet_slot(slot: str, text: str) -> dict:
+def set_meal(slot: str, text: str, weekdays: list[int]) -> dict:
+    if not text.strip():
+        raise ValueError("Para vaciar un momento usá clear_meal")
     with _db() as db:
-        previous = diet.save(db, slot, text)
-        current = next(s["text"] for s in diet.plan(db) if s["key"] == slot)
-        return {"slot": slot, "previous_text": previous, "text": current}
+        previous = diet.set_meal(db, slot, text, _week_days(weekdays))
+        return {"slot": slot, "meal": diet.clean_meal(text), "previous": {str(d): t or None for d, t in previous.items()}}
 
 
-@mcp.tool(description=(
-    f"Suma renglones al final de un momento del plan (slot: {', '.join(diet.SLOT_KEYS)}) sin tocar lo "
-    "que ya había. Los renglones que ya están no se repiten."
-))
-def append_to_diet_slot(slot: str, lines: str) -> dict:
+@mcp.tool
+def clear_meal(slot: str, weekdays: list[int]) -> dict:
+    """Vacía un momento del plan en los días pedidos (0 = lunes ... 6 = domingo). Borra: pedí
+    confirmación antes. Devuelve lo que había (previous, por día) para poder deshacer."""
     with _db() as db:
-        previous = diet.append(db, slot, lines)
-        current = next(s["text"] for s in diet.plan(db) if s["key"] == slot)
-        return {"slot": slot, "previous_text": previous, "text": current}
+        previous = diet.clear_meal(db, slot, _week_days(weekdays))
+        return {"slot": slot, "previous": {str(d): t or None for d, t in previous.items()}}
+
+
+@mcp.tool
+def copy_diet_day(from_weekday: int, to_weekdays: list[int]) -> dict:
+    """Copia el día entero del plan (todos los momentos) a otros días (0 = lunes ... 6 = domingo).
+    Pisa lo que tenían: pedí confirmación antes."""
+    with _db() as db:
+        diet.copy_day(db, from_weekday, _week_days(to_weekdays))
+        return {"copied_from": from_weekday, "to": sorted(set(to_weekdays) - {from_weekday})}
 
 
 @mcp.tool

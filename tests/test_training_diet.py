@@ -58,16 +58,14 @@ def test_current_meal_by_hour():
 
 
 def test_diet_search_ignores_accents_and_case(db):
-    diet.save(db, "desayuno", "Avena con plátano\nTostadas con queso")
-    diet.save(db, "merienda", "Yogur con PLATANO")
-    diet.save(db, "almuerzo", "Pollo con arroz")
+    diet.set_meal(db, "desayuno", "Avena con plátano", [0])
+    diet.set_meal(db, "merienda", "Yogur con PLATANO", [0, 3])
+    diet.set_meal(db, "almuerzo", "Pollo con arroz", [2])
     found = diet.search(db, "platano")
-    assert [(s["key"], s["lines"]) for s in found] == [
-        ("desayuno", ["Avena con plátano"]), ("merienda", ["Yogur con PLATANO"])]
-    assert diet.search(db, "pollo arroz")[0]["key"] == "almuerzo"
+    assert [(d["weekday"], [m["key"] for m in d["meals"]]) for d in found] == [
+        (0, ["desayuno", "merienda"]), (3, ["merienda"])]
+    assert diet.search(db, "pollo arroz")[0]["weekday"] == 2
     assert diet.search(db, "pescado") == []
-    with pytest.raises(ValueError):
-        diet.save(db, "brunch", "x")
 
 
 def test_training_and_diet_pages(client):
@@ -87,7 +85,9 @@ def test_training_and_diet_pages(client):
     assert "1 de 1 hechos" in client.get("/entreno").text
     assert "Press militar" in client.get("/").text or "Hombros" in client.get("/").text
 
-    client.post("/cuerpo/dieta/almuerzo", data={"text": "Pollo con ensalada"})
+    client.post(f"/cuerpo/dieta/{wd}/almuerzo", data={"text": "Pollo con ensalada"})
+    client.post(f"/cuerpo/dieta/{wd}/copiar", data={"to": ["0", "6"]})
+    assert "Pollo con ensalada" in client.get("/cuerpo/dieta?dia=6").text
     assert "Pollo con ensalada" in client.get("/cuerpo/dieta?q=POLLO").text
     assert "Ahora toca" in client.get("/cuerpo").text
 

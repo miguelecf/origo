@@ -5,12 +5,24 @@ from app.core.database import Base
 
 
 class MealPlan(Base):
-    """El plan de comidas: un texto libre por momento del día, igual todos los días."""
+    """Plan viejo (hasta 0.2): un texto por momento, igual todos los días. Ya no se escribe:
+    se copia una vez a MealPlanDay y queda intacto para poder volver a una versión anterior."""
 
     __tablename__ = "meal_plan"
 
     slot: Mapped[str] = mapped_column(String(20), primary_key=True)  # desayuno | media_manana | ...
     text: Mapped[str] = mapped_column(Text, default="")
+
+
+class MealPlanDay(Base):
+    """El plan de comidas: una comida por momento del día, para cada día de la semana.
+    Una celda vacía se guarda con text="" (no se borra la fila)."""
+
+    __tablename__ = "meal_plan_days"
+
+    weekday: Mapped[int] = mapped_column(primary_key=True)  # 0 = lunes ... 6 = domingo
+    slot: Mapped[str] = mapped_column(String(20), primary_key=True)
+    text: Mapped[str] = mapped_column(String(200), default="")
 
 
 class DietTargets(Base):

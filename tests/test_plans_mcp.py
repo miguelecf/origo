@@ -14,7 +14,7 @@ from app.mcp_server import mcp
 from app.services import body, diet, training
 
 PLAN_TOOLS = {
-    "get_diet_plan", "set_diet_slot", "append_to_diet_slot", "set_diet_targets",
+    "get_diet_plan", "set_meal", "clear_meal", "copy_diet_day", "set_diet_targets", "delete_food_entry",
     "get_routine", "add_routine_item", "update_routine_item", "move_routine_item", "delete_routine_item",
     "set_routine_day_title", "get_workout_history",
     "get_weight_goals", "add_weight_milestone", "delete_weight_milestone",
@@ -96,15 +96,47 @@ def test_delete_item_reorders_positions(db):
     assert training.delete_item(db, b.id) is False
 
 
-def test_diet_append_preserves_and_save_returns_previous(db):
-    diet.save(db, "desayuno", "Avena con banana")
-    previous = diet.append(db, "desayuno", "Café\navena con BANANA\n\nTostadas")
-    assert previous == "Avena con banana"
-    assert diet.plan(db)[0]["lines"] == ["Avena con banana", "Café", "Tostadas"]
-    assert diet.save(db, "desayuno", "Solo café") == "Avena con banana\nCafé\nTostadas"
+def test_one_meal_per_slot_and_day(db):
+    previous = diet.set_meal(db, "desayuno", "  Avena   con banana ", [0, 2])
+    assert previous == {0: "", 2: ""}
+    assert diet.plan(db, 0)[0]["text"] == "Avena con banana" and diet.plan(db, 1)[0]["text"] == ""
+    assert diet.set_meal(db, "desayuno", "Solo café", [0]) == {0: "Avena con banana"}
+    for bad in ("Avena\nTostadas", "x" * (diet.MAX_MEAL + 1)):
+        with pytest.raises(ValueError):
+            diet.set_meal(db, "desayuno", bad, [0])
     with pytest.raises(ValueError):
-        diet.save(db, "desayuno", "x" * (diet.MAX_TEXT + 1))
-    assert diet.plan(db)[0]["text"] == "Solo café"  # el error no pisó nada
+        diet.set_meal(db, "brunch", "x", [0])
+    with pytest.raises(ValueError):
+        diet.set_meal(db, "cena", "x", [7])
+    with pytest.raises(ValueError):
+        diet.set_meal(db, "cena", "x", [])
+    assert diet.plan(db, 0)[0]["text"] == "Solo café"  # los errores no pisaron nada
+    assert diet.clear_meal(db, "desayuno", [0]) == {0: "Solo café"} and diet.plan(db, 0)[0]["lines"] == []
+
+
+def test_copy_day(db):
+    diet.set_meal(db, "almuerzo", "Pollo con arroz", [0])
+    diet.set_meal(db, "cena", "Pescado", [3])
+    diet.copy_day(db, 0, [3, 4, 0])
+    assert diet.plan(db, 3)[2]["text"] == "Pollo con arroz" and diet.plan(db, 3)[4]["text"] == ""
+    assert diet.plan(db, 4)[2]["text"] == "Pollo con arroz"
+    with pytest.raises(ValueError):
+        diet.copy_day(db, 0, [0])
+
+
+def test_legacy_plan_is_copied_once_to_every_day(db):
+    from app.models import MealPlan
+
+    db.add(MealPlan(slot="desayuno", text="Avena\nTostadas"))
+    db.add(MealPlan(slot="cena", text="Sopa"))
+    db.commit()
+    week = diet.week(db)
+    assert all(d["meals"][0]["text"] == "Avena / Tostadas" and d["meals"][4]["text"] == "Sopa" for d in week)
+    # Vaciar todo no vuelve a traer el plan viejo, y el viejo queda intacto.
+    for slot in diet.SLOT_KEYS:
+        diet.clear_meal(db, slot, list(range(7)))
+    assert all(not m["text"] for d in diet.week(db) for m in d["meals"])
+    assert db.get(MealPlan, "desayuno").text == "Avena\nTostadas"
 
 
 def test_diet_targets_partial_update(db):
@@ -166,24 +198,37 @@ async def test_plan_tools_are_listed(shared):
 
 @pytest.mark.anyio
 async def test_diet_round_trip_mcp_and_web(shared, client):
-    client.post("/cuerpo/dieta/almuerzo", data={"text": "Pollo con arroz"})
+    client.post("/cuerpo/dieta/0/almuerzo", data={"text": "Pollo con arroz"})
     async with Client(mcp) as mcp_client:
-        plan = await _call(mcp_client, "get_diet_plan")
-        assert next(s for s in plan["slots"] if s["slot"] == "almuerzo")["text"] == "Pollo con arroz"
+        plan = await _call(mcp_client, "get_diet_plan", weekday=0)
+        assert "Una comida por momento" in plan["format"]
+        assert next(m for m in plan["days"][0]["meals"] if m["slot"] == "almuerzo")["meal"] == "Pollo con arroz"
+        assert len((await _call(mcp_client, "get_diet_plan"))["days"]) == 7
 
-        result = await _call(mcp_client, "append_to_diet_slot", slot="almuerzo", lines="Ensalada")
-        assert result["previous_text"] == "Pollo con arroz" and result["text"] == "Pollo con arroz\nEnsalada"
+        result = await _call(mcp_client, "set_meal", slot="cena", text="Tortilla de papas", weekdays=[0, 1])
+        assert result["previous"] == {"0": None, "1": None}
+        cleared = await _call(mcp_client, "clear_meal", slot="almuerzo", weekdays=[0])
+        assert cleared["previous"] == {"0": "Pollo con arroz"}
 
         targets = await _call(mcp_client, "set_diet_targets", kcal=2200, protein_g=180, supplements="Creatina 5 g")
         assert targets["previous"]["kcal"] is None and targets["targets"]["kcal"] == 2200
         cleared = await _call(mcp_client, "set_diet_targets", clear=["protein_g"])
         assert cleared["targets"]["protein_g"] is None and cleared["targets"]["kcal"] == 2200
 
-        bad = await mcp_client.call_tool("set_diet_slot", {"slot": "brunch", "text": "x"}, raise_on_error=False)
-        assert bad.is_error
+        for name, args in [("set_meal", {"slot": "brunch", "text": "x", "weekdays": [0]}),
+                           ("set_meal", {"slot": "cena", "text": "A\nB", "weekdays": [0]}),
+                           ("set_meal", {"slot": "cena", "text": "", "weekdays": [0]}),
+                           ("set_meal", {"slot": "cena", "text": "x", "weekdays": []})]:
+            assert (await mcp_client.call_tool(name, args, raise_on_error=False)).is_error
 
-    page = client.get("/cuerpo/dieta").text
-    assert "Ensalada" in page and "2200" in page and "Creatina 5 g" in page
+        entry = await _call(mcp_client, "log_food", text="Una manzana")
+        assert (await _call(mcp_client, "delete_food_entry", entry_id=entry["id"]))["deleted"] == entry["id"]
+        assert (await mcp_client.call_tool("delete_food_entry", {"entry_id": entry["id"]}, raise_on_error=False)).is_error
+
+    page = client.get("/cuerpo/dieta?dia=1").text
+    assert "Tortilla de papas" in page and "2200" in page and "Creatina 5 g" in page
+    client.post("/cuerpo/dieta/1/cena", data={"clear": "true"})
+    assert "Tortilla de papas" not in client.get("/cuerpo/dieta?dia=1").text
     assert client.get("/cuerpo").status_code == 200
 
 

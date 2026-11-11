@@ -781,6 +781,8 @@ button:disabled, button:disabled:hover { box-shadow: none; transform: none; bord
 /* Cuerpo: lo que toca ahora */
 .now-meal { display: flex; flex-direction: column; gap: 0.5rem; color: inherit; text-decoration: none; border-width: 3px; box-shadow: var(--shadow-control); }
 .page-grid > .now-meal { grid-column: 1 / -1; }
+label.inline { flex-direction: row; align-items: center; gap: 0.5rem; font-weight: 450; cursor: pointer; }
+.diet-slot .meal { margin: 0; font-weight: 550; overflow-wrap: anywhere; }
 .now-meal ul, .plan-lines { margin: 0; padding-left: 1.2rem; display: flex; flex-direction: column; gap: 0.25rem; }
 .now-tag { background: var(--brand); color: var(--brand-ink); border-color: var(--line); }
 

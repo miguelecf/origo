@@ -1,15 +1,21 @@
-"""Plan de comidas: qué toca en cada momento del día, y los objetivos diarios del plan.
+"""Plan de comidas: qué toca comer en cada momento de cada día de la semana, y los objetivos del plan.
+
+Formato estricto: para cada día (0 = lunes ... 6 = domingo) y cada momento hay UNA comida, en un
+renglón corto. Si el plan da opciones, va la que se elige para ese día. El plan es fijo por día de
+la semana y no rota solo.
 
 Los objetivos (kcal, macros, reglas, suplementos) los escribe quien arma el plan, por ejemplo el
 agente. Origo los guarda y los muestra: no los calcula ni los ajusta, y no son comidas consumidas."""
 import datetime as dt
+import re
 import unicodedata
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.core.clock import now
-from app.models import DietTargets, MealPlan
+from app.core.clock import now, today
+from app.models import DietTargets, MealPlan, MealPlanDay
+from app.services.training import WEEKDAYS
 
 # (clave, nombre, emoji, desde qué hora toca)
 SLOTS = [
@@ -20,49 +26,114 @@ SLOTS = [
     ("cena", "Cena", "🌙", dt.time(20, 0)),
 ]
 SLOT_KEYS = [key for key, *_ in SLOTS]
-MAX_TEXT = 2000
+MAX_MEAL = 200
+MAX_TEXT = 2000  # reglas y suplementos de los objetivos
+
+FORMAT = (
+    "Una comida por momento y por día de la semana (weekday 0 = lunes ... 6 = domingo; "
+    f"slot: {', '.join(SLOT_KEYS)}). Cada comida es un solo renglón de hasta {MAX_MEAL} caracteres, "
+    "con cantidades si el plan las tiene (ej. '200 g de pollo con arroz y ensalada'). Sin listas de "
+    "opciones: si el plan da opciones, cargá la elegida para ese día. Un momento sin comida queda vacío. "
+    "El plan es fijo por día de la semana y no rota solo. Es el plan, no lo comido."
+)
 
 
-def plan(db: Session) -> list[dict]:
-    """Los cinco momentos en orden, con su texto y sus líneas."""
-    texts = {row.slot: row.text for row in db.scalars(select(MealPlan))}
-    return [
-        {"key": key, "name": name, "emoji": emoji, "from": start, "text": texts.get(key, ""),
-         "lines": [line.strip() for line in texts.get(key, "").splitlines() if line.strip()]}
-        for key, name, emoji, start in SLOTS
-    ]
+def _check_day(weekday) -> int:
+    if not isinstance(weekday, int) or isinstance(weekday, bool) or not 0 <= weekday <= 6:
+        raise ValueError("El día va de 0 (lunes) a 6 (domingo)")
+    return weekday
 
 
-def save(db: Session, slot: str, text: str) -> str:
-    """Reemplaza el texto de un momento. Devuelve el texto anterior, para poder deshacer."""
+def _check_slot(slot: str) -> str:
     if slot not in SLOT_KEYS:
-        raise ValueError("Ese momento del día no existe")
-    text = text.strip()
-    if len(text) > MAX_TEXT:
-        raise ValueError(f"El texto de un momento admite hasta {MAX_TEXT} caracteres")
-    row = db.get(MealPlan, slot) or MealPlan(slot=slot, text="")
-    previous = row.text or ""
-    row.text = text
-    db.add(row)
+        raise ValueError(f"Ese momento del día no existe. Opciones: {', '.join(SLOT_KEYS)}")
+    return slot
+
+
+def _migrate_legacy(db: Session) -> None:
+    """Una sola vez: el plan viejo (igual todos los días) se copia a los siete días.
+    Las opciones que eran varios renglones quedan unidas con ' / ' para no perder nada.
+    Las celdas vacías se guardan como filas con text="", así esto no vuelve a correr."""
+    if db.scalar(select(func.count()).select_from(MealPlanDay)):
+        return
+    legacy = {row.slot: row.text for row in db.scalars(select(MealPlan)) if (row.text or "").strip()}
+    if not legacy:
+        return
+    for weekday in range(7):
+        for slot in SLOT_KEYS:
+            lines = [line.strip() for line in legacy.get(slot, "").splitlines() if line.strip()]
+            db.add(MealPlanDay(weekday=weekday, slot=slot, text=" / ".join(lines)))
+    db.commit()
+
+
+def _cells(db: Session) -> dict[tuple[int, str], str]:
+    _migrate_legacy(db)
+    return {(row.weekday, row.slot): row.text for row in db.scalars(select(MealPlanDay))}
+
+
+def _day(cells: dict, weekday: int) -> list[dict]:
+    meals = []
+    for key, name, emoji, start in SLOTS:
+        text = cells.get((weekday, key), "")
+        meals.append({"key": key, "name": name, "emoji": emoji, "from": start, "text": text,
+                      "lines": [text] if text else []})
+    return meals
+
+
+def plan(db: Session, weekday: int | None = None) -> list[dict]:
+    """Los momentos de un día en orden (por defecto, hoy), con su comida."""
+    return _day(_cells(db), today().weekday() if weekday is None else _check_day(weekday))
+
+
+def week(db: Session) -> list[dict]:
+    cells = _cells(db)
+    return [{"weekday": d, "name": WEEKDAYS[d], "meals": _day(cells, d)} for d in range(7)]
+
+
+def clean_meal(text: str) -> str:
+    text = re.sub(r"\s+", " ", text or "").strip()
+    if len(text) > MAX_MEAL:
+        raise ValueError(f"Una comida admite hasta {MAX_MEAL} caracteres, en un solo renglón")
+    return text
+
+
+def set_meal(db: Session, slot: str, text: str, weekdays: list[int]) -> dict[int, str]:
+    """Pone la misma comida en ese momento de los días pedidos. Texto vacío = vaciar.
+    Devuelve lo que había en cada día, para poder deshacer."""
+    _check_slot(slot)
+    if isinstance(text, str) and "\n" in text.strip():
+        raise ValueError("Una comida va en un solo renglón: sin listas ni opciones")
+    text = clean_meal(text)
+    days = sorted({_check_day(d) for d in weekdays or []})
+    if not days:
+        raise ValueError("Elegí al menos un día")
+    cells = _cells(db)
+    previous = {}
+    for weekday in days:
+        previous[weekday] = cells.get((weekday, slot), "")
+        row = db.get(MealPlanDay, (weekday, slot)) or MealPlanDay(weekday=weekday, slot=slot)
+        row.text = text
+        db.add(row)
     db.commit()
     return previous
 
 
-def append(db: Session, slot: str, lines: str) -> str:
-    """Suma renglones al final de un momento sin tocar lo que ya había (los repetidos no se duplican).
-    Devuelve el texto anterior."""
-    if slot not in SLOT_KEYS:
-        raise ValueError("Ese momento del día no existe")
-    row = db.get(MealPlan, slot)
-    current = (row.text if row else "") or ""
-    have = {fold(line.strip()) for line in current.splitlines() if line.strip()}
-    new = []
-    for line in lines.splitlines():
-        line = line.strip()
-        if line and fold(line) not in have:
-            have.add(fold(line))
-            new.append(line)
-    return save(db, slot, "\n".join([current.rstrip(), *new]) if current.strip() else "\n".join(new))
+def clear_meal(db: Session, slot: str, weekdays: list[int]) -> dict[int, str]:
+    return set_meal(db, slot, "", weekdays)
+
+
+def copy_day(db: Session, source: int, targets: list[int]) -> None:
+    """Copia el día entero (todos los momentos) a otros días."""
+    meals = plan(db, source)
+    days = sorted({_check_day(d) for d in targets or []} - {source})
+    if not days:
+        raise ValueError("Elegí al menos otro día")
+    for meal in meals:
+        for weekday in days:
+            row = db.get(MealPlanDay, (weekday, meal["key"])) or MealPlanDay(weekday=weekday, slot=meal["key"])
+            row.text = meal["text"]
+            db.add(row)
+    db.commit()
 
 
 # --- Objetivos del plan ---
@@ -117,13 +188,13 @@ def fold(text: str) -> str:
 
 
 def search(db: Session, query: str) -> list[dict]:
-    """Los momentos con alguna línea que contenga todas las palabras buscadas."""
+    """Las comidas de la semana que contienen todas las palabras buscadas, por día."""
     words = fold(query).split()
     if not words:
         return []
     found = []
-    for slot in plan(db):
-        lines = [line for line in slot["lines"] if all(w in fold(line) for w in words)]
-        if lines:
-            found.append({**slot, "lines": lines})
+    for day in week(db):
+        meals = [m for m in day["meals"] if m["text"] and all(w in fold(m["text"]) for w in words)]
+        if meals:
+            found.append({**day, "meals": meals})
     return found

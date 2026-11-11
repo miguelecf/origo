@@ -90,11 +90,17 @@ def delete_milestone(milestone_id: int, db: Session = Depends(get_db)):
     return RedirectResponse("/cuerpo#peso", status_code=303)
 
 
+def _day_param(value) -> int:
+    return value if isinstance(value, int) and 0 <= value <= 6 else today().weekday()
+
+
 @router.get("/dieta")
-def diet_page(request: Request, q: str = "", db: Session = Depends(get_db)):
+def diet_page(request: Request, q: str = "", dia: int | None = None, db: Session = Depends(get_db)):
+    weekday = _day_param(dia)
     return render(
         request, "pages/diet.html",
-        meal_plan=diet.plan(db), now_slot=diet.current_slot(), query=q.strip()[:80],
+        week=diet.week(db), weekday=weekday, today_weekday=today().weekday(),
+        meal_plan=diet.plan(db, weekday), now_slot=diet.current_slot(), query=q.strip()[:80],
         results=diet.search(db, q[:80]) if q.strip() else None, saved=request.query_params.get("ok"),
         targets=diet.targets(db), target_lines=diet.targets_lines(diet.targets(db)),
         error=request.query_params.get("error"),
@@ -114,10 +120,22 @@ def save_targets(
     return RedirectResponse("/cuerpo/dieta?ok=objetivos#objetivos", status_code=303)
 
 
-@router.post("/dieta/{slot}")
-def save_diet(slot: str, text: str = Form(""), db: Session = Depends(get_db)):
+@router.post("/dieta/{weekday}/copiar")
+def copy_diet_day(weekday: int, to: list[int] = Form([]), db: Session = Depends(get_db)):
     try:
-        diet.save(db, slot, text)
-    except ValueError:
-        return RedirectResponse("/cuerpo/dieta", status_code=303)
-    return RedirectResponse(f"/cuerpo/dieta?ok={slot}#{slot}", status_code=303)
+        diet.copy_day(db, weekday, to)
+    except ValueError as exc:
+        return RedirectResponse(f"/cuerpo/dieta?dia={weekday}&error={quote(str(exc))}", status_code=303)
+    return RedirectResponse(f"/cuerpo/dieta?dia={weekday}&ok=copiado", status_code=303)
+
+
+@router.post("/dieta/{weekday}/{slot}")
+def save_meal(
+    weekday: int, slot: str, text: str = Form(""), every_day: bool = Form(False), clear: bool = Form(False),
+    db: Session = Depends(get_db),
+):
+    try:
+        diet.set_meal(db, slot, "" if clear else text, list(range(7)) if every_day else [weekday])
+    except ValueError as exc:
+        return RedirectResponse(f"/cuerpo/dieta?dia={weekday}&error={quote(str(exc))}#{slot}", status_code=303)
+    return RedirectResponse(f"/cuerpo/dieta?dia={weekday}&ok={slot}#{slot}", status_code=303)

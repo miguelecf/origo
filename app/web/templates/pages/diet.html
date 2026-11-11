@@ -13,10 +13,10 @@
 {% if results is not none %}
 <section class="card block diet-results" aria-live="polite">
   <header class="row between"><h2>🔎 «{{ query }}»</h2>{% if query %}<a href="/cuerpo/dieta">Limpiar</a>{% endif %}</header>
-  {% for slot in results %}
+  {% for day in results %}
   <div class="stack-sm">
-    <h3>{{ slot.emoji }} {{ slot.name }}</h3>
-    <ul class="plan-lines">{% for line in slot.lines %}<li>{{ line }}</li>{% endfor %}</ul>
+    <h3><a href="/cuerpo/dieta?dia={{ day.weekday }}">{{ day.name }}</a></h3>
+    <ul class="plan-lines">{% for meal in day.meals %}<li>{{ meal.emoji }} <b>{{ meal.name }}:</b> {{ meal.text }}</li>{% endfor %}</ul>
   </div>
   {% else %}
   <p class="soft">No aparece «{{ query }}» en tu plan.</p>
@@ -24,6 +24,57 @@
 </section>
 {% endif %}
 
+<nav class="segments days" aria-label="Día de la semana" id="dias">
+  {% for d in week %}
+  {% set filled = d.meals | selectattr("text") | list | length %}
+  <a href="/cuerpo/dieta?dia={{ d.weekday }}" aria-label="{{ d.name }}" {% if d.weekday == weekday %}aria-current="page"{% endif %}>
+    {{ d.name[:2] }}{% if filled %}<small class="count">{{ filled }}</small>{% endif %}
+  </a>
+  {% endfor %}
+</nav>
+
+{% set day_name = week[weekday].name %}
+<h2 class="block">{{ day_name }}{% if weekday == today_weekday %} <span class="tag now-tag">Hoy</span>{% endif %}</h2>
+<p class="soft"><small>Una comida por momento. Si el plan da opciones, escribí la que va este día.</small></p>
+
+<div class="diet-slots">
+  {% for slot in meal_plan %}
+  {% set is_now = weekday == today_weekday and slot.key == now_slot %}
+  <section class="card diet-slot {{ 'is-now' if is_now }}" id="{{ slot.key }}">
+    <header class="row between">
+      <h2>{{ ico(slot.emoji) }}{{ slot.name }}</h2>
+      {% if is_now %}<span class="tag now-tag">Ahora</span>{% else %}<small class="soft">desde las {{ slot['from'].strftime('%H:%M') }}</small>{% endif %}
+    </header>
+    {% if slot.text %}<p class="meal">{{ slot.text }}</p>{% endif %}
+    <details class="fold" {% if not slot.text %}open{% endif %}>
+      <summary>{{ '✏️ Cambiar' if slot.text else '✏️ Escribir qué va acá' }}</summary>
+      <form method="post" action="/cuerpo/dieta/{{ weekday }}/{{ slot.key }}" class="stack-sm">
+        <input name="text" value="{{ slot.text }}" maxlength="200" autocomplete="off" enterkeyhint="done"
+               aria-label="{{ slot.name }} del {{ day_name | lower }}" placeholder="Ej.: 200 g de pollo con arroz y ensalada">
+        <label class="inline"><input type="checkbox" name="every_day" value="true"> Igual todos los días</label>
+        <div class="row">
+          <button type="submit" class="grow">Guardar</button>
+          {% if slot.text %}<button type="submit" name="clear" value="true" class="ghost destructive">Vaciar</button>{% endif %}
+        </div>
+      </form>
+    </details>
+    {% if saved == slot.key %}<p class="ok" role="status">✅ Guardado.</p>{% endif %}
+  </section>
+  {% endfor %}
+</div>
+
+<details class="card fold block">
+  <summary>📋 Copiar el {{ day_name | lower }} a otros días</summary>
+  <form method="post" action="/cuerpo/dieta/{{ weekday }}/copiar" class="stack-sm" data-confirm="¿Copiar el {{ day_name | lower }}? Pisa lo que tengan los días elegidos.">
+    <div class="row wrap">
+      {% for d in week if d.weekday != weekday %}
+      <label class="inline"><input type="checkbox" name="to" value="{{ d.weekday }}"> {{ d.name }}</label>
+      {% endfor %}
+    </div>
+    <button type="submit">Copiar</button>
+  </form>
+  {% if saved == "copiado" %}<p class="ok" role="status">✅ Copiado.</p>{% endif %}
+</details>
 {% set t = targets %}
 <section class="card block" id="objetivos">
   <h2>{{ ico('🎯') }}Objetivos del plan</h2>
@@ -58,25 +109,4 @@
   {% if saved == "objetivos" %}<p class="ok" role="status">✅ Guardado.</p>{% endif %}
 </section>
 
-<div class="diet-slots">
-  {% for slot in meal_plan %}
-  <section class="card diet-slot {{ 'is-now' if slot.key == now_slot }}" id="{{ slot.key }}">
-    <header class="row between">
-      <h2>{{ ico(slot.emoji) }}{{ slot.name }}</h2>
-      {% if slot.key == now_slot %}<span class="tag now-tag">Ahora</span>{% else %}<small class="soft">desde las {{ slot['from'].strftime('%H:%M') }}</small>{% endif %}
-    </header>
-    {% if slot.lines %}
-    <ul class="plan-lines">{% for line in slot.lines %}<li>{{ line }}</li>{% endfor %}</ul>
-    {% endif %}
-    <details class="fold" {% if not slot.lines %}open{% endif %}>
-      <summary>{{ '✏️ Editar' if slot.lines else '✏️ Escribir qué va acá' }}</summary>
-      <form method="post" action="/cuerpo/dieta/{{ slot.key }}" class="stack-sm">
-        <textarea name="text" rows="4" maxlength="2000" aria-label="Plan de {{ slot.name | lower }}" placeholder="Una opción por renglón. Ej.:&#10;Avena con banana&#10;2 tostadas con queso y café">{{ slot.text }}</textarea>
-        <button type="submit">Guardar {{ slot.name | lower }}</button>
-      </form>
-    </details>
-    {% if saved == slot.key %}<p class="ok" role="status">✅ Guardado.</p>{% endif %}
-  </section>
-  {% endfor %}
-</div>
 {% endblock %}
